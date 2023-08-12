@@ -139,9 +139,11 @@ impl<'i> Parser<'i> {
         self.close(m, TreeKind::Error);
     }
 
+    const WHITESPACE: TokenSet = TokenSet::from_array([TokenKind::Space, TokenKind::Newline]);
+
     fn eat_ws(&mut self) {
-        while self.nth(0).is_whitespace() {
-            self.advance();
+        while self.at_any(Self::WHITESPACE) {
+            self.advance()
         }
     }
 
@@ -211,8 +213,11 @@ fn set_group(p: &mut Parser) {
     p.expect(TokenKind::Newline);
 
     while !p.at(TokenKind::Hash) && !p.eof() {
+        p.eat_ws();
+
         if p.at_any(SET_FIRST) {
             set(p);
+            p.expect(TokenKind::Newline);
         } else {
             break;
         }
@@ -270,17 +275,73 @@ mod tests {
 
     use super::*;
 
+    macro_rules! parse_snapshot {
+        ($input:expr) => {{
+            let tokens = lex($input);
+            let tree = parse(tokens);
+
+            insta::with_settings!({
+                description => $input,
+                omit_expression => true
+            }, {
+                insta::assert_debug_snapshot!(tree);
+            })
+        }};
+    }
+
     #[test]
-    fn test_parser() {
-        let input = "
+    fn workout_simplest() {
+        parse_snapshot!(
+            "
+# Bench Press
+225 x5"
+        );
+    }
+
+    #[test]
+    fn workout_multiple_sets() {
+        parse_snapshot!(
+            "
 # Bench Press
 225 x5
+245 x8"
+        );
+    }
 
-# Pull ups";
+    #[test]
+    fn workout_multiple_groups() {
+        parse_snapshot!(
+            "
+# Bench Press
+225 x5
+245.5 x8
 
-        let tokens = lex(input);
-        let tree = parse(tokens);
-        println!("{tree:?}");
-        panic!()
+# Pull-ups
+bw x5
+BW x10"
+        );
+    }
+
+    #[test]
+    fn workout_space_before_set_group() {
+        parse_snapshot!(
+            "
+        # Bench Press
+225 x5
+
+    # Pull-ups
+bw x3"
+        );
+    }
+
+    #[test]
+    fn workout_space_before_set() {
+        parse_snapshot!(
+            "
+# Bench Press
+        225 x5
+
+    245 x8"
+        );
     }
 }

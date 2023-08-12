@@ -55,17 +55,6 @@ impl TokenKind {
     pub fn is_whitespace(self) -> bool {
         matches!(self, TokenKind::Space | TokenKind::Newline)
     }
-
-    pub fn set_start(self) -> bool {
-        matches!(
-            self,
-            TokenKind::Bodyweight | TokenKind::X | TokenKind::Integer | TokenKind::Float
-        )
-    }
-
-    pub fn is_number(self) -> bool {
-        matches!(self, TokenKind::Float | TokenKind::Integer)
-    }
 }
 
 fn ident(lex: &mut Lexer<TokenKind>) {
