@@ -1,0 +1,286 @@
+use std::cell::Cell;
+
+use crate::{
+    ast::{Child, Token, Tree, TreeKind},
+    lexer::TokenKind,
+    utils::TokenSet,
+};
+
+enum Event {
+    Open { kind: TreeKind },
+    Close,
+    Advance,
+}
+
+struct MarkOpened {
+    index: usize,
+}
+
+struct MarkClosed {
+    index: usize,
+}
+
+struct Parser<'i> {
+    tokens: Vec<Token<'i>>,
+    pos: usize,
+    fuel: Cell<u32>,
+    events: Vec<Event>,
+}
+
+pub fn parse(tokens: Vec<Token>) -> Tree {
+    let mut p = Parser::new(tokens);
+    workout(&mut p);
+    p.build_tree()
+}
+
+impl<'i> Parser<'i> {
+    pub fn new(tokens: Vec<Token<'i>>) -> Self {
+        Self {
+            tokens,
+            pos: 0,
+            fuel: Cell::new(256),
+            events: Vec::new(),
+        }
+    }
+
+    fn open(&mut self) -> MarkOpened {
+        let mark = MarkOpened {
+            index: self.events.len(),
+        };
+        self.events.push(Event::Open {
+            kind: TreeKind::Error,
+        });
+        mark
+    }
+
+    fn open_before(&mut self, m: MarkClosed) -> MarkOpened {
+        let mark = MarkOpened { index: m.index };
+
+        // TODO: use index based linked list
+        self.events.insert(
+            m.index,
+            Event::Open {
+                kind: TreeKind::Error,
+            },
+        );
+        mark
+    }
+
+    fn close(&mut self, m: MarkOpened, kind: TreeKind) -> MarkClosed {
+        self.events[m.index] = Event::Open { kind };
+        self.events.push(Event::Close);
+        MarkClosed { index: m.index }
+    }
+
+    fn advance(&mut self) {
+        assert!(!self.eof());
+        self.fuel.set(256);
+        self.events.push(Event::Advance);
+        self.pos += 1;
+    }
+
+    fn eof(&self) -> bool {
+        self.pos == self.tokens.len()
+    }
+
+    fn nth(&self, lookahead: usize) -> TokenKind {
+        if self.fuel.get() == 0 {
+            panic!("Parser is stuck")
+        }
+        self.fuel.set(self.fuel.get() - 1);
+        self.tokens
+            .get(self.pos + lookahead)
+            .map_or(TokenKind::Eof, |it| it.kind)
+    }
+
+    /// check next token
+    fn at(&self, kind: TokenKind) -> bool {
+        self.nth(0) == kind
+    }
+
+    fn at_any(&self, set: TokenSet) -> bool {
+        set.is_set(self.nth(0))
+    }
+
+    /// at plus consume next token
+    fn eat(&mut self, kind: TokenKind) -> bool {
+        if self.at(kind) {
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    fn eat_any(&mut self, set: TokenSet) -> bool {
+        if self.at_any(set) {
+            self.advance();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// eat plus error reporting
+    fn expect(&mut self, kind: TokenKind) {
+        if self.eat(kind) {
+            return;
+        }
+
+        // TODO: error reporting
+        eprintln!("expected {kind:?}");
+    }
+
+    fn advance_with_error(&mut self, error: &str) {
+        let m = self.open();
+        // TODO: error reporting
+        eprintln!("{error}");
+        self.advance();
+        self.close(m, TreeKind::Error);
+    }
+
+    fn eat_ws(&mut self) {
+        while self.nth(0).is_whitespace() {
+            self.advance();
+        }
+    }
+
+    fn build_tree(self) -> Tree<'i> {
+        let mut tokens = self.tokens.into_iter();
+        let mut events = self.events;
+        let mut stack = Vec::new();
+
+        // pop the last 'Close' event to ensure that the stack is non-empty in loop
+        assert!(matches!(events.pop(), Some(Event::Close)));
+
+        for event in events {
+            match event {
+                // Starting new node; just push empty tree to stack
+                Event::Open { kind } => {
+                    stack.push(Tree {
+                        kind,
+                        children: Vec::new(),
+                    });
+                }
+                // tree is done; pop it off the stack and append to new current tree
+                Event::Close => {
+                    let tree = stack.pop().unwrap();
+                    stack.last_mut().unwrap().children.push(Child::Tree(tree));
+                }
+                // consume token and append to current tree
+                Event::Advance => {
+                    let token = tokens.next().unwrap();
+                    stack.last_mut().unwrap().children.push(Child::Token(token));
+                }
+            }
+        }
+
+        assert!(stack.len() == 1);
+        assert!(tokens.next().is_none());
+
+        stack.pop().unwrap()
+    }
+}
+
+fn workout(p: &mut Parser) {
+    let m = p.open();
+
+    while !p.eof() {
+        p.eat_ws();
+
+        if p.at(TokenKind::Hash) {
+            set_group(p)
+        } else {
+            p.advance_with_error("expected a set group");
+        }
+    }
+
+    p.close(m, TreeKind::Workout);
+}
+
+const SET_FIRST: TokenSet = WEIGHT_FIRST.with_kind(TokenKind::X);
+
+fn set_group(p: &mut Parser) {
+    assert!(p.at(TokenKind::Hash));
+    let m = p.open();
+
+    p.expect(TokenKind::Hash);
+    p.eat(TokenKind::Space);
+    p.expect(TokenKind::Ident);
+    p.eat(TokenKind::Space);
+    p.expect(TokenKind::Newline);
+
+    while !p.at(TokenKind::Hash) && !p.eof() {
+        if p.at_any(SET_FIRST) {
+            set(p);
+        } else {
+            break;
+        }
+    }
+
+    p.close(m, TreeKind::SetGroup);
+}
+
+const WEIGHT_FIRST: TokenSet =
+    TokenSet::from_array([TokenKind::Float, TokenKind::Integer, TokenKind::Bodyweight]);
+
+const QUANTITY_FIRST: TokenSet = TokenSet::from_array([TokenKind::Integer, TokenKind::X]);
+
+/// weight quantity
+/// quantity weight
+fn set(p: &mut Parser) {
+    assert!(p.at_any(SET_FIRST));
+    let m = p.open();
+
+    if p.at_any(WEIGHT_FIRST) {
+        weight(p);
+        p.eat(TokenKind::Space);
+    }
+
+    if p.at_any(QUANTITY_FIRST) {
+        quantity(p);
+        p.eat(TokenKind::Space);
+    }
+
+    p.close(m, TreeKind::Set);
+}
+
+fn weight(p: &mut Parser) {
+    assert!(p.at_any(WEIGHT_FIRST));
+    let m = p.open();
+
+    p.eat_any(WEIGHT_FIRST);
+
+    p.close(m, TreeKind::Weight);
+}
+
+fn quantity(p: &mut Parser) {
+    assert!(p.at_any(QUANTITY_FIRST));
+    let m = p.open();
+
+    p.eat(TokenKind::X);
+    p.eat(TokenKind::Integer);
+
+    p.close(m, TreeKind::Quantity);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::lexer::lex;
+
+    use super::*;
+
+    #[test]
+    fn test_parser() {
+        let input = "
+# Bench Press
+225 x5
+
+# Pull ups";
+
+        let tokens = lex(input);
+        let tree = parse(tokens);
+        println!("{tree:?}");
+        panic!()
+    }
+}
