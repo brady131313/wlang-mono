@@ -161,20 +161,36 @@ impl<'i> Parser<'i> {
     }
 
     /// eat plus error reporting
-    fn expect(&mut self, kind: TokenKind) {
+    fn expect(&mut self, kind: TokenKind) -> bool {
         if self.eat(kind) {
-            return;
+            return true;
         }
 
         self.errors.push(ParseError::expected(self.pos, kind));
+        false
     }
 
-    fn expect_any(&mut self, set: TokenSet) {
+    fn expect_and_skip_till(&mut self, kind: TokenKind, skip_till: TokenSet) -> bool {
+        if self.expect(kind) {
+            return true;
+        }
+
+        let m = self.open();
+        while !self.at_any(skip_till) && !self.eof() {
+            self.advance();
+        }
+        self.close(m, TreeKind::Error);
+
+        false
+    }
+
+    fn expect_any(&mut self, set: TokenSet) -> bool {
         if self.eat_any(set) {
-            return;
+            return true;
         }
 
         self.errors.push(ParseError::expected_one_of(self.pos, set));
+        false
     }
 
     fn advance_with_error(&mut self, error: &str) {
@@ -345,6 +361,8 @@ fn weight(p: &mut Parser) {
 const SIMPLE_DURATION_UNIT: TokenSet =
     TokenSet::from_array([TokenKind::Second, TokenKind::Minute, TokenKind::Hour]);
 
+const REP_RECOVERY: TokenSet = TokenSet::from_array([TokenKind::Newline, TokenKind::Comma]);
+
 fn quantity(p: &mut Parser) {
     assert!(p.at_any(QUANTITY_FIRST));
     let m = p.open();
@@ -353,7 +371,7 @@ fn quantity(p: &mut Parser) {
     if p.at(TokenKind::X) {
         // rep prefix
         p.eat(TokenKind::X);
-        p.expect(TokenKind::Integer);
+        p.expect_and_skip_till(TokenKind::Integer, REP_RECOVERY);
     } else if p.at(TokenKind::Integer) {
         // rep suffix
         p.eat(TokenKind::Integer);
@@ -509,6 +527,9 @@ bw x3"
 
     #[test]
     fn workout_invalid_rep() {
-        parse_snapshot!("#Bench Press\n225 xbench");
+        parse_snapshot!(
+            "#Bench Press\n225 xbench",
+            [ParseError::expected(6, TokenKind::Integer)]
+        );
     }
 }

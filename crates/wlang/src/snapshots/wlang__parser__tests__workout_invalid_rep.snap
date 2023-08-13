@@ -1,6 +1,5 @@
 ---
 source: crates/wlang/src/parser.rs
-assertion_line: 512
 description: "#Bench Press\n225 xbench"
 ---
 Workout
@@ -15,6 +14,6 @@ Workout
         Space(1)
       Reps
         'x'
-  Error
-    'bench'
+        Error
+          'bench'
 
