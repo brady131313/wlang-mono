@@ -4,8 +4,9 @@ description: "#Bench Press\n30s bw"
 ---
 Workout
   SetGroup
-    '#'
-    'Bench Press'
+    Exercise
+      '#'
+      'Bench Press'
     Nl(1)
     Set
       SimpleDuration

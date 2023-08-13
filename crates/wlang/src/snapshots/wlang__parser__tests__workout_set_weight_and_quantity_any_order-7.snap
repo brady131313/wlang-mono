@@ -4,8 +4,9 @@ description: "#Bench Press\n1:30 bw"
 ---
 Workout
   SetGroup
-    '#'
-    'Bench Press'
+    Exercise
+      '#'
+      'Bench Press'
     Nl(1)
     Set
       LongDuration

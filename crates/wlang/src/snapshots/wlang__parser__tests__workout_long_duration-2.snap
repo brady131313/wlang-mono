@@ -4,8 +4,9 @@ description: "#Planks\nbw 1:30:25"
 ---
 Workout
   SetGroup
-    '#'
-    'Planks'
+    Exercise
+      '#'
+      'Planks'
     Nl(1)
     Set
       Weight

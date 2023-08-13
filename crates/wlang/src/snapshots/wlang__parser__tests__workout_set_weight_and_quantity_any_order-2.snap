@@ -4,8 +4,9 @@ description: "#Bench Press\nx5 225"
 ---
 Workout
   SetGroup
-    '#'
-    'Bench Press'
+    Exercise
+      '#'
+      'Bench Press'
     Nl(1)
     Set
       Reps

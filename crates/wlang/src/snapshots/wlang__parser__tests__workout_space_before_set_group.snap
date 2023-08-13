@@ -6,9 +6,10 @@ Workout
   Nl(1)
   Space(8)
   SetGroup
-    '#'
-    Space(1)
-    'Bench Press'
+    Exercise
+      '#'
+      Space(1)
+      'Bench Press'
     Nl(1)
     Set
       Weight
@@ -20,9 +21,10 @@ Workout
     Nl(2)
     Space(4)
   SetGroup
-    '#'
-    Space(1)
-    'Pull-ups'
+    Exercise
+      '#'
+      Space(1)
+      'Pull-ups'
     Nl(1)
     Set
       Weight

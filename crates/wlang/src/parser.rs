@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::{
-    ast::{Child, Token, Tree, TreeKind},
+    ast::{AstTree, Child, Token, Tree, TreeKind, Workout},
     lexer::TokenKind,
     utils::TokenSet,
 };
@@ -37,6 +37,7 @@ struct Parser<'i> {
 pub fn parse(tokens: Vec<Token>) -> (Tree, Vec<ParseError>) {
     let mut p = Parser::new(tokens);
     workout(&mut p);
+
     p.build_tree()
 }
 
@@ -230,9 +231,12 @@ fn set_group(p: &mut Parser) {
     assert!(p.at(TokenKind::Hash));
     let m = p.open();
 
+    let e = p.open();
     p.expect(TokenKind::Hash);
     p.eat(TokenKind::Space);
     p.expect(TokenKind::Ident);
+    p.close(e, TreeKind::Exercise);
+
     p.eat(TokenKind::Space);
     p.expect(TokenKind::Newline);
 

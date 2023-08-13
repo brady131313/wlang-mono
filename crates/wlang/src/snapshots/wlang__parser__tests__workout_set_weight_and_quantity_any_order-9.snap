@@ -4,8 +4,9 @@ description: "#Pull-ups\n10x bw + 10"
 ---
 Workout
   SetGroup
-    '#'
-    'Pull-ups'
+    Exercise
+      '#'
+      'Pull-ups'
     Nl(1)
     Set
       Reps

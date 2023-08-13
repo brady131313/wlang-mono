@@ -5,9 +5,10 @@ description: "\n# Bench Press\n        225 x5\n\n    245 x8"
 Workout
   Nl(1)
   SetGroup
-    '#'
-    Space(1)
-    'Bench Press'
+    Exercise
+      '#'
+      Space(1)
+      'Bench Press'
     Nl(1)
     Space(8)
     Set

@@ -5,9 +5,10 @@ description: "\n# Bench Press\n225 x5\n245.5 x8\n\n# Pull-ups\nbw x5\nBW x10"
 Workout
   Nl(1)
   SetGroup
-    '#'
-    Space(1)
-    'Bench Press'
+    Exercise
+      '#'
+      Space(1)
+      'Bench Press'
     Nl(1)
     Set
       Weight
@@ -26,9 +27,10 @@ Workout
         '8'
     Nl(2)
   SetGroup
-    '#'
-    Space(1)
-    'Pull-ups'
+    Exercise
+      '#'
+      Space(1)
+      'Pull-ups'
     Nl(1)
     Set
       Weight
