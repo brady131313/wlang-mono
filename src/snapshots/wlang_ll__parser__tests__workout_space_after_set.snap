@@ -1,0 +1,29 @@
+---
+source: src/parser.rs
+description: "\n# Bench Press\n225 x5      \n245 x8      "
+---
+Workout
+  Nl(1)
+  SetGroup
+    '#'
+    Space(1)
+    'Bench Press'
+    Nl(1)
+    Set
+      Weight
+        '225'
+      Space(1)
+      Quantity
+        'x'
+        '5'
+      Space(6)
+    Nl(1)
+    Set
+      Weight
+        '245'
+      Space(1)
+      Quantity
+        'x'
+        '8'
+      Space(6)
+

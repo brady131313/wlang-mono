@@ -217,7 +217,10 @@ fn set_group(p: &mut Parser) {
 
         if p.at_any(SET_FIRST) {
             set(p);
-            p.expect(TokenKind::Newline);
+
+            if !p.eof() {
+                p.expect(TokenKind::Newline);
+            }
         } else {
             break;
         }
@@ -231,21 +234,36 @@ const WEIGHT_FIRST: TokenSet =
 
 const QUANTITY_FIRST: TokenSet = TokenSet::from_array([TokenKind::Integer, TokenKind::X]);
 
-/// weight quantity
-/// quantity weight
 fn set(p: &mut Parser) {
     assert!(p.at_any(SET_FIRST));
     let m = p.open();
 
+    // weight then quantity
     if p.at_any(WEIGHT_FIRST) {
         weight(p);
         p.eat(TokenKind::Space);
+
+        if p.at_any(QUANTITY_FIRST) {
+            quantity(p);
+        } else {
+            p.advance_with_error("expected quantity");
+        }
     }
 
+    // quantity then weight
     if p.at_any(QUANTITY_FIRST) {
         quantity(p);
         p.eat(TokenKind::Space);
+
+        if p.at_any(WEIGHT_FIRST) {
+            weight(p);
+        } else {
+            p.advance_with_error("expected weight");
+        }
     }
+
+    // consume trailing spaces
+    p.eat(TokenKind::Space);
 
     p.close(m, TreeKind::Set);
 }
@@ -263,8 +281,17 @@ fn quantity(p: &mut Parser) {
     assert!(p.at_any(QUANTITY_FIRST));
     let m = p.open();
 
-    p.eat(TokenKind::X);
-    p.eat(TokenKind::Integer);
+    // rep prefix
+    if p.at(TokenKind::X) {
+        p.eat(TokenKind::X);
+        p.expect(TokenKind::Integer);
+    }
+
+    // rep suffix
+    if p.at(TokenKind::Integer) {
+        p.eat(TokenKind::Integer);
+        p.expect(TokenKind::X);
+    }
 
     p.close(m, TreeKind::Quantity);
 }
@@ -343,5 +370,27 @@ bw x3"
 
     245 x8"
         );
+    }
+
+    #[test]
+    fn workout_space_after_set() {
+        parse_snapshot!(
+            "
+# Bench Press
+225 x5      
+245 x8      "
+        );
+    }
+
+    #[test]
+    fn workout_reps_x_suffix_and_prefix() {
+        parse_snapshot!("#Bench Press\n225 x5");
+        parse_snapshot!("#Bench Press\n225 5x");
+    }
+
+    #[test]
+    fn workout_set_weight_and_quantity_any_order() {
+        parse_snapshot!("#Bench Press\n225 x5");
+        parse_snapshot!("#Bench Press\nx5 225");
     }
 }
