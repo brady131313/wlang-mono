@@ -124,6 +124,10 @@ impl<'i> Workout<'i> {
     pub fn set_groups(&self) -> impl Iterator<Item = SetGroup> {
         child_trees(self.0)
     }
+
+    pub fn walk<W: TreeWalker>(&self, walker: &mut W) {
+        self.0.walk(walker)
+    }
 }
 
 impl_ast_tree!(TreeKind::SetGroup);
@@ -276,6 +280,14 @@ impl<'i> Integer<'i> {
     }
 }
 
+pub trait TreeWalker {
+    fn token(&mut self, token: &Token);
+
+    fn start_tree(&mut self, kind: TreeKind);
+
+    fn end_tree(&mut self, kind: TreeKind);
+}
+
 impl<'i> Tree<'i> {
     fn print<W: Write>(&self, buf: &mut W, level: usize) -> std::fmt::Result {
         let indent = "  ".repeat(level);
@@ -293,6 +305,19 @@ impl<'i> Tree<'i> {
         }
 
         Ok(())
+    }
+
+    fn walk<W: TreeWalker>(&self, walker: &mut W) {
+        walker.start_tree(self.kind);
+
+        for child in &self.children {
+            match child {
+                Child::Token(token) => walker.token(token),
+                Child::Tree(tree) => tree.walk(walker),
+            }
+        }
+
+        walker.end_tree(self.kind);
     }
 }
 
