@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::{
-    ast::{AstTree, Child, Token, Tree, TreeKind, Workout},
+    ast::{Child, Token, Tree, TreeKind},
     lexer::TokenKind,
     utils::TokenSet,
 };
@@ -20,10 +20,40 @@ struct MarkClosed {
     index: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ParseError {
     token_idx: usize,
-    msg: String,
+    kind: ParseErrorKind,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum ParseErrorKind {
+    Expected(TokenKind),
+    ExpectedOneOf(TokenSet),
+    Custom(String),
+}
+
+impl ParseError {
+    pub fn custom(idx: usize, msg: String) -> Self {
+        Self {
+            token_idx: idx,
+            kind: ParseErrorKind::Custom(msg),
+        }
+    }
+
+    pub fn expected(idx: usize, kind: TokenKind) -> Self {
+        Self {
+            token_idx: idx,
+            kind: ParseErrorKind::Expected(kind),
+        }
+    }
+
+    pub fn expected_one_of(idx: usize, set: TokenSet) -> Self {
+        Self {
+            token_idx: idx,
+            kind: ParseErrorKind::ExpectedOneOf(set),
+        }
+    }
 }
 
 struct Parser<'i> {
@@ -136,10 +166,7 @@ impl<'i> Parser<'i> {
             return;
         }
 
-        self.errors.push(ParseError {
-            token_idx: self.pos,
-            msg: format!("expected {kind:?}"),
-        });
+        self.errors.push(ParseError::expected(self.pos, kind));
     }
 
     fn expect_any(&mut self, set: TokenSet) {
@@ -147,18 +174,13 @@ impl<'i> Parser<'i> {
             return;
         }
 
-        self.errors.push(ParseError {
-            token_idx: self.pos,
-            msg: format!("expected {:?}", set.kinds()),
-        });
+        self.errors.push(ParseError::expected_one_of(self.pos, set));
     }
 
     fn advance_with_error(&mut self, error: &str) {
         let m = self.open();
-        self.errors.push(ParseError {
-            token_idx: self.pos,
-            msg: format!("{error}"),
-        });
+        self.errors
+            .push(ParseError::custom(self.pos, format!("{error}")));
         self.advance();
         self.close(m, TreeKind::Error);
     }
@@ -328,14 +350,12 @@ fn quantity(p: &mut Parser) {
     let m = p.open();
     let mut typ = TreeKind::Reps;
 
-    // rep prefix
     if p.at(TokenKind::X) {
+        // rep prefix
         p.eat(TokenKind::X);
         p.expect(TokenKind::Integer);
-    }
-
-    // rep suffix
-    if p.at(TokenKind::Integer) {
+    } else if p.at(TokenKind::Integer) {
+        // rep suffix
         p.eat(TokenKind::Integer);
 
         if p.at(TokenKind::X) {
@@ -368,16 +388,20 @@ mod tests {
 
     macro_rules! parse_snapshot {
         ($input:expr) => {{
+            parse_snapshot!($input, [])
+        }};
+
+        ($input:expr, $errors:expr) => {{
             let tokens = lex($input);
             let (tree, errors) = parse(tokens);
 
-            assert!(errors.is_empty());
             insta::with_settings!({
                 description => $input,
                 omit_expression => true
             }, {
                 insta::assert_debug_snapshot!(tree);
-            })
+            });
+            assert_eq!(errors, $errors);
         }};
     }
 
@@ -481,5 +505,10 @@ bw x3"
     fn workout_long_duration() {
         parse_snapshot!("#Planks\nbw 1:30");
         parse_snapshot!("#Planks\nbw 1:30:25");
+    }
+
+    #[test]
+    fn workout_invalid_rep() {
+        parse_snapshot!("#Bench Press\n225 xbench");
     }
 }

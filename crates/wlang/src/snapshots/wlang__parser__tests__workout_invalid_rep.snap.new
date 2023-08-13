@@ -1,0 +1,20 @@
+---
+source: crates/wlang/src/parser.rs
+assertion_line: 512
+description: "#Bench Press\n225 xbench"
+---
+Workout
+  SetGroup
+    Exercise
+      '#'
+      'Bench Press'
+    Nl(1)
+    Set
+      Weight
+        '225'
+        Space(1)
+      Reps
+        'x'
+  Error
+    'bench'
+
