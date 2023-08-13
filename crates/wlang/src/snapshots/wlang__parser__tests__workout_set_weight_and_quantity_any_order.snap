@@ -1,5 +1,5 @@
 ---
-source: src/parser.rs
+source: crates/wlang/src/parser.rs
 description: "#Bench Press\n225 x5"
 ---
 Workout

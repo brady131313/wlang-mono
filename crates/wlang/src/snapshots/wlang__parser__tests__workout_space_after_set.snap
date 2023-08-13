@@ -1,6 +1,6 @@
 ---
-source: src/parser.rs
-description: "\n# Bench Press\n225 x5\n245 x8"
+source: crates/wlang/src/parser.rs
+description: "\n# Bench Press\n225 x5      \n245 x8      "
 ---
 Workout
   Nl(1)
@@ -16,6 +16,7 @@ Workout
       Reps
         'x'
         '5'
+      Space(6)
     Nl(1)
     Set
       Weight
@@ -24,4 +25,5 @@ Workout
       Reps
         'x'
         '8'
+      Space(6)
 

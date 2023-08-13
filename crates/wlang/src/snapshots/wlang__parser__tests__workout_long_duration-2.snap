@@ -1,6 +1,6 @@
 ---
-source: src/parser.rs
-description: "#Planks\nbw 1:30"
+source: crates/wlang/src/parser.rs
+description: "#Planks\nbw 1:30:25"
 ---
 Workout
   SetGroup
@@ -15,4 +15,6 @@ Workout
         '1'
         ':'
         '30'
+        ':'
+        '25'
 

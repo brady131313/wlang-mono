@@ -1,12 +1,10 @@
 ---
-source: src/parser.rs
-description: "\n# Bench Press\n225 x5"
+source: crates/wlang/src/parser.rs
+description: "#Bench Press\n225 5x"
 ---
 Workout
-  Nl(1)
   SetGroup
     '#'
-    Space(1)
     'Bench Press'
     Nl(1)
     Set
@@ -14,6 +12,6 @@ Workout
         '225'
       Space(1)
       Reps
-        'x'
         '5'
+        'x'
 

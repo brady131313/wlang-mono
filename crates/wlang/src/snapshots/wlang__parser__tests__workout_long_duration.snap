@@ -1,6 +1,6 @@
 ---
-source: src/parser.rs
-description: "#Planks\nbw 30m"
+source: crates/wlang/src/parser.rs
+description: "#Planks\nbw 1:30"
 ---
 Workout
   SetGroup
@@ -11,7 +11,8 @@ Workout
       Weight
         'bw'
       Space(1)
-      SimpleDuration
+      LongDuration
+        '1'
+        ':'
         '30'
-        'm'
 

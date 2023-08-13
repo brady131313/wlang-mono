@@ -1,0 +1,17 @@
+---
+source: crates/wlang/src/parser.rs
+description: "#Planks\nbw 30m"
+---
+Workout
+  SetGroup
+    '#'
+    'Planks'
+    Nl(1)
+    Set
+      Weight
+        'bw'
+      Space(1)
+      SimpleDuration
+        '30'
+        'm'
+
