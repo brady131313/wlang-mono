@@ -16,11 +16,14 @@ pub fn lex(input: &str) -> Vec<Token> {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u8)]
 pub enum TokenKind {
     #[token("bw", ignore(ascii_case))]
     Bodyweight,
     #[token("x", ignore(ascii_case))]
     X,
+    #[token("+")]
+    Plus,
 
     #[regex("[1-9][0-9]*|0")]
     Integer,
@@ -48,6 +51,8 @@ pub enum TokenKind {
     Ident,
 
     Eof,
+
+    // must always be last variant
     Error,
 }
 
@@ -117,6 +122,11 @@ bw 30s
     fn lex_x() {
         assert_eq!(lex_kind("x"), [X]);
         assert_eq!(lex_kind("X"), [X]);
+    }
+
+    #[test]
+    fn lex_plus() {
+        assert_eq!(lex_kind("+"), [Plus]);
     }
 
     #[test]

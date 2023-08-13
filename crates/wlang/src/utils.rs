@@ -15,6 +15,18 @@ impl TokenSet {
     pub const fn from_array<const N: usize>(kinds: [TokenKind; N]) -> Self {
         token_set_from_array(&kinds, 0, TokenSet(0))
     }
+
+    pub fn kinds(&self) -> Vec<TokenKind> {
+        let mut kinds = Vec::new();
+        for i in 0..(TokenKind::Error as u8 + 1) {
+            let kind = unsafe { std::mem::transmute::<u8, TokenKind>(i) };
+            if self.is_set(kind) {
+                kinds.push(kind);
+            }
+        }
+
+        kinds
+    }
 }
 
 const fn token_set_from_array(kinds: &[TokenKind], idx: usize, current: TokenSet) -> TokenSet {

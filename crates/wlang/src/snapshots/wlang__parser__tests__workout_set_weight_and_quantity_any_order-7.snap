@@ -1,20 +1,18 @@
 ---
 source: crates/wlang/src/parser.rs
-description: "#Planks\nbw 1:30:25"
+description: "#Bench Press\n1:30 bw"
 ---
 Workout
   SetGroup
     '#'
-    'Planks'
+    'Bench Press'
     Nl(1)
     Set
-      Weight
-        'bw'
-        Space(1)
       LongDuration
         '1'
         ':'
         '30'
-        ':'
-        '25'
+      Space(1)
+      Weight
+        'bw'
 

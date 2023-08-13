@@ -13,7 +13,7 @@ Workout
     Set
       Weight
         '225'
-      Space(1)
+        Space(1)
       Reps
         'x'
         '5'
@@ -22,7 +22,7 @@ Workout
     Set
       Weight
         '245'
-      Space(1)
+        Space(1)
       Reps
         'x'
         '8'

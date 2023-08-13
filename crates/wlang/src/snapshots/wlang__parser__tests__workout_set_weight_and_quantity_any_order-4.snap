@@ -1,19 +1,17 @@
 ---
 source: crates/wlang/src/parser.rs
-description: "\n# Bench Press\n225 x5"
+description: "#Bench Press\nbw 30s"
 ---
 Workout
-  Nl(1)
   SetGroup
     '#'
-    Space(1)
     'Bench Press'
     Nl(1)
     Set
       Weight
-        '225'
+        'bw'
         Space(1)
-      Reps
-        'x'
-        '5'
+      SimpleDuration
+        '30'
+        's'
 

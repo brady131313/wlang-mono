@@ -135,14 +135,29 @@ impl<'i> Parser<'i> {
             return;
         }
 
-        // TODO: error reporting
-        eprintln!("expected {kind:?}");
+        self.errors.push(ParseError {
+            token_idx: self.pos,
+            msg: format!("expected {kind:?}"),
+        });
+    }
+
+    fn expect_any(&mut self, set: TokenSet) {
+        if self.eat_any(set) {
+            return;
+        }
+
+        self.errors.push(ParseError {
+            token_idx: self.pos,
+            msg: format!("expected {:?}", set.kinds()),
+        });
     }
 
     fn advance_with_error(&mut self, error: &str) {
         let m = self.open();
-        // TODO: error reporting
-        eprintln!("{error}");
+        self.errors.push(ParseError {
+            token_idx: self.pos,
+            msg: format!("{error}"),
+        });
         self.advance();
         self.close(m, TreeKind::Error);
     }
@@ -242,12 +257,20 @@ const WEIGHT_FIRST: TokenSet =
     TokenSet::from_array([TokenKind::Float, TokenKind::Integer, TokenKind::Bodyweight]);
 
 const QUANTITY_FIRST: TokenSet = TokenSet::from_array([TokenKind::Integer, TokenKind::X]);
+const QUANTITY_END: TokenSet = TokenSet::from_array([
+    TokenKind::Second,
+    TokenKind::Minute,
+    TokenKind::Hour,
+    TokenKind::Colon,
+    TokenKind::X,
+]);
 
 fn set(p: &mut Parser) {
     assert!(p.at_any(SET_FIRST));
     let m = p.open();
 
-    if p.at_any(WEIGHT_FIRST) {
+    // if weight is followed by a token that can end a quantity
+    if p.at_any(WEIGHT_FIRST) && !QUANTITY_END.is_set(p.nth(1)) {
         // weight then quantity
         weight(p);
 
@@ -282,6 +305,13 @@ fn weight(p: &mut Parser) {
     let m = p.open();
 
     p.eat_any(WEIGHT_FIRST);
+    p.eat(TokenKind::Space);
+
+    if p.at(TokenKind::Plus) {
+        p.eat(TokenKind::Plus);
+        p.eat(TokenKind::Space);
+        p.expect_any(WEIGHT_FIRST);
+    }
 
     p.close(m, TreeKind::Weight);
 }
@@ -423,6 +453,17 @@ bw x3"
     fn workout_set_weight_and_quantity_any_order() {
         parse_snapshot!("#Bench Press\n225 x5");
         parse_snapshot!("#Bench Press\nx5 225");
+
+        parse_snapshot!("#Bench Press\n5x 225");
+
+        parse_snapshot!("#Bench Press\nbw 30s");
+        parse_snapshot!("#Bench Press\n30s bw");
+
+        parse_snapshot!("#Bench Press\nbw 1:30");
+        parse_snapshot!("#Bench Press\n1:30 bw");
+
+        parse_snapshot!("#Pull-ups\nbw + 10 x10");
+        parse_snapshot!("#Pull-ups\n10x bw + 10");
     }
 
     #[test]

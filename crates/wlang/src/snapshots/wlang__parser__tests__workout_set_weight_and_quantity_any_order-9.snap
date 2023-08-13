@@ -1,0 +1,21 @@
+---
+source: crates/wlang/src/parser.rs
+description: "#Pull-ups\n10x bw + 10"
+---
+Workout
+  SetGroup
+    '#'
+    'Pull-ups'
+    Nl(1)
+    Set
+      Reps
+        '10'
+        'x'
+      Space(1)
+      Weight
+        'bw'
+        Space(1)
+        '+'
+        Space(1)
+        '10'
+
