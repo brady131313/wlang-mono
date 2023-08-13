@@ -9,7 +9,9 @@ pub enum TreeKind {
     SetGroup,
     Set,
     Weight,
-    Quantity,
+    Reps,
+    SimpleDuration,
+    LongDuration,
 }
 
 #[derive(Debug)]

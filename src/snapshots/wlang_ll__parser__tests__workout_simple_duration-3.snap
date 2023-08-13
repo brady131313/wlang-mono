@@ -1,17 +1,17 @@
 ---
 source: src/parser.rs
-description: "#Bench Press\n225 5x"
+description: "#Planks\nbw 30h"
 ---
 Workout
   SetGroup
     '#'
-    'Bench Press'
+    'Planks'
     Nl(1)
     Set
       Weight
-        '225'
+        'bw'
       Space(1)
-      Reps
-        '5'
-        'x'
+      SimpleDuration
+        '30'
+        'h'
 

@@ -277,9 +277,13 @@ fn weight(p: &mut Parser) {
     p.close(m, TreeKind::Weight);
 }
 
+const SIMPLE_DURATION_UNIT: TokenSet =
+    TokenSet::from_array([TokenKind::Second, TokenKind::Minute, TokenKind::Hour]);
+
 fn quantity(p: &mut Parser) {
     assert!(p.at_any(QUANTITY_FIRST));
     let m = p.open();
+    let mut typ = TreeKind::Reps;
 
     // rep prefix
     if p.at(TokenKind::X) {
@@ -290,10 +294,27 @@ fn quantity(p: &mut Parser) {
     // rep suffix
     if p.at(TokenKind::Integer) {
         p.eat(TokenKind::Integer);
-        p.expect(TokenKind::X);
+
+        if p.at(TokenKind::X) {
+            p.eat(TokenKind::X);
+        } else if p.at_any(SIMPLE_DURATION_UNIT) {
+            typ = TreeKind::SimpleDuration;
+            p.eat_any(SIMPLE_DURATION_UNIT);
+        } else if p.at(TokenKind::Colon) {
+            // seconds or minutes
+            typ = TreeKind::LongDuration;
+            p.eat(TokenKind::Colon);
+            p.expect(TokenKind::Integer);
+
+            // seconds
+            if p.at(TokenKind::Colon) {
+                p.eat(TokenKind::Colon);
+                p.expect(TokenKind::Integer);
+            }
+        }
     }
 
-    p.close(m, TreeKind::Quantity);
+    p.close(m, typ);
 }
 
 #[cfg(test)]
@@ -392,5 +413,18 @@ bw x3"
     fn workout_set_weight_and_quantity_any_order() {
         parse_snapshot!("#Bench Press\n225 x5");
         parse_snapshot!("#Bench Press\nx5 225");
+    }
+
+    #[test]
+    fn workout_simple_duration() {
+        parse_snapshot!("#Planks\nbw 30s");
+        parse_snapshot!("#Planks\nbw 30m");
+        parse_snapshot!("#Planks\nbw 30h");
+    }
+
+    #[test]
+    fn workout_long_duration() {
+        parse_snapshot!("#Planks\nbw 1:30");
+        parse_snapshot!("#Planks\nbw 1:30:25");
     }
 }

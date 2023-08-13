@@ -13,7 +13,7 @@ Workout
       Weight
         '225'
       Space(1)
-      Quantity
+      Reps
         'x'
         '5'
     Nl(1)
@@ -21,7 +21,7 @@ Workout
       Weight
         '245.5'
       Space(1)
-      Quantity
+      Reps
         'x'
         '8'
     Nl(2)
@@ -34,7 +34,7 @@ Workout
       Weight
         'bw'
       Space(1)
-      Quantity
+      Reps
         'x'
         '5'
     Nl(1)
@@ -42,7 +42,7 @@ Workout
       Weight
         'BW'
       Space(1)
-      Quantity
+      Reps
         'x'
         '10'
 

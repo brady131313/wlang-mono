@@ -8,7 +8,7 @@ Workout
     'Bench Press'
     Nl(1)
     Set
-      Quantity
+      Reps
         'x'
         '5'
       Space(1)

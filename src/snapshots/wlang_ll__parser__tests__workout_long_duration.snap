@@ -1,0 +1,18 @@
+---
+source: src/parser.rs
+description: "#Planks\nbw 1:30"
+---
+Workout
+  SetGroup
+    '#'
+    'Planks'
+    Nl(1)
+    Set
+      Weight
+        'bw'
+      Space(1)
+      LongDuration
+        '1'
+        ':'
+        '30'
+
