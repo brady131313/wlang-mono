@@ -8,8 +8,13 @@ const main = (bindings) => {
   const formattedOut = document.querySelector("#formatted");
 
   const onInput = (input) => {
-    const treeStr = parseTree(input);
-    cstOut.textContent = treeStr;
+    try {
+      const treeStr = parseTree(input);
+      cstOut.textContent = treeStr;
+      console.log("ok");
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   onInput(input.value);

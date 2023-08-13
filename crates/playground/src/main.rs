@@ -15,7 +15,8 @@ macro_rules! console_log {
 #[wasm_bindgen(js_name = parseTree)]
 pub fn parse_tree(input: &str) -> String {
     let tokens = lex(input);
-    let tree = parse(tokens);
+    let (tree, errors) = parse(tokens);
+    console_log!("{errors:#?}");
     format!("{tree:#?}")
 }
 

@@ -20,14 +20,21 @@ struct MarkClosed {
     index: usize,
 }
 
+#[derive(Debug)]
+pub struct ParseError {
+    token_idx: usize,
+    msg: String,
+}
+
 struct Parser<'i> {
     tokens: Vec<Token<'i>>,
     pos: usize,
     fuel: Cell<u32>,
     events: Vec<Event>,
+    errors: Vec<ParseError>,
 }
 
-pub fn parse(tokens: Vec<Token>) -> Tree {
+pub fn parse(tokens: Vec<Token>) -> (Tree, Vec<ParseError>) {
     let mut p = Parser::new(tokens);
     workout(&mut p);
     p.build_tree()
@@ -40,6 +47,7 @@ impl<'i> Parser<'i> {
             pos: 0,
             fuel: Cell::new(256),
             events: Vec::new(),
+            errors: Vec::new(),
         }
     }
 
@@ -147,10 +155,11 @@ impl<'i> Parser<'i> {
         }
     }
 
-    fn build_tree(self) -> Tree<'i> {
+    fn build_tree(self) -> (Tree<'i>, Vec<ParseError>) {
         let mut tokens = self.tokens.into_iter();
         let mut events = self.events;
         let mut stack = Vec::new();
+        let errors = self.errors;
 
         // pop the last 'Close' event to ensure that the stack is non-empty in loop
         assert!(matches!(events.pop(), Some(Event::Close)));
@@ -180,7 +189,7 @@ impl<'i> Parser<'i> {
         assert!(stack.len() == 1);
         assert!(tokens.next().is_none());
 
-        stack.pop().unwrap()
+        (stack.pop().unwrap(), errors)
     }
 }
 
@@ -238,26 +247,26 @@ fn set(p: &mut Parser) {
     assert!(p.at_any(SET_FIRST));
     let m = p.open();
 
-    // weight then quantity
     if p.at_any(WEIGHT_FIRST) {
+        // weight then quantity
         weight(p);
+
         p.eat(TokenKind::Space);
 
         if p.at_any(QUANTITY_FIRST) {
             quantity(p);
-        } else {
+        } else if !p.eof() {
             p.advance_with_error("expected quantity");
         }
-    }
-
-    // quantity then weight
-    if p.at_any(QUANTITY_FIRST) {
+    } else if p.at_any(QUANTITY_FIRST) {
+        // quantity then weight
         quantity(p);
+
         p.eat(TokenKind::Space);
 
         if p.at_any(WEIGHT_FIRST) {
             weight(p);
-        } else {
+        } else if !p.eof() {
             p.advance_with_error("expected weight");
         }
     }
@@ -326,8 +335,9 @@ mod tests {
     macro_rules! parse_snapshot {
         ($input:expr) => {{
             let tokens = lex($input);
-            let tree = parse(tokens);
+            let (tree, errors) = parse(tokens);
 
+            assert!(errors.is_empty());
             insta::with_settings!({
                 description => $input,
                 omit_expression => true
