@@ -145,7 +145,7 @@ impl<'i> SetGroup<'i> {
 impl_ast_tree!(TreeKind::Exercise);
 
 impl<'i> Exercise<'i> {
-    pub fn exercise(&self) -> Option<Ident> {
+    pub fn ident(&self) -> Option<Ident> {
         find_child_token(self.0)
     }
 }
@@ -169,7 +169,7 @@ impl<'i> Weight<'i> {
         find_child_token(self.0)
     }
 
-    pub fn bodyweight(&self) -> Option<WeightLiteral> {
+    pub fn bodyweight(&self) -> Option<Bodyweight> {
         find_child_token(self.0)
     }
 }
@@ -177,6 +177,15 @@ impl<'i> Weight<'i> {
 pub enum WeightLiteral<'i> {
     Float(Float<'i>),
     Integer(Integer<'i>),
+}
+
+impl<'i> WeightLiteral<'i> {
+    pub fn parse(&self) -> f64 {
+        match self {
+            WeightLiteral::Float(float) => float.parse(),
+            WeightLiteral::Integer(int) => int.parse() as f64,
+        }
+    }
 }
 
 impl<'i> AstToken<'i> for WeightLiteral<'i> {
@@ -227,7 +236,40 @@ impl<'i> SimpleDuration<'i> {
     pub fn duration(&self) -> Option<Integer> {
         find_child_token(self.0)
     }
+
+    pub fn unit(&self) -> Option<TimeUnit> {
+        find_child_token(self.0)
+    }
 }
+
+pub enum TimeUnit<'i> {
+    Hour(Hour<'i>),
+    Minute(Minute<'i>),
+    Second(Second<'i>),
+}
+
+impl<'i> AstToken<'i> for TimeUnit<'i> {
+    fn cast(token: &'i Token<'i>) -> Option<Self> {
+        match token.kind {
+            TokenKind::Hour => Some(Self::Hour(Hour(token))),
+            TokenKind::Minute => Some(Self::Minute(Minute(token))),
+            TokenKind::Second => Some(Self::Second(Second(token))),
+            _ => None,
+        }
+    }
+
+    fn text(&self) -> &str {
+        match self {
+            TimeUnit::Hour(hour) => hour.text(),
+            TimeUnit::Minute(minute) => minute.text(),
+            TimeUnit::Second(second) => second.text(),
+        }
+    }
+}
+
+impl_ast_token!(TokenKind::Hour);
+impl_ast_token!(TokenKind::Minute);
+impl_ast_token!(TokenKind::Second);
 
 impl_ast_tree!(TreeKind::LongDuration);
 
@@ -275,7 +317,7 @@ impl<'i> Float<'i> {
 impl_ast_token!(TokenKind::Integer);
 
 impl<'i> Integer<'i> {
-    pub fn parse(&self) -> u32 {
+    pub fn parse(&self) -> usize {
         self.0.text.parse().unwrap()
     }
 }

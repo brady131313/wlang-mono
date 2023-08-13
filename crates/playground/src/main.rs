@@ -2,6 +2,7 @@ use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
 use wlang::{
     ast::{AstTree, TreeKind, TreeWalker, Workout},
+    hir,
     lexer::{lex, TokenKind},
     parser::parse,
 };
@@ -83,6 +84,7 @@ impl TreeWalker for HTMLPrinter {
 pub struct ParseResult {
     pub cst_str: String,
     pub formatted_str: String,
+    pub hir_str: String,
 }
 
 #[wasm_bindgen(js_name = parseTree)]
@@ -90,17 +92,20 @@ pub fn parse_tree(input: &str) -> ParseResult {
     let tokens = lex(input);
     let (tree, errors) = parse(tokens);
     console_log!("{errors:#?}");
+    let cst_str = format!("{tree:#?}");
 
     let workout = Workout::cast(&tree).unwrap();
 
     let mut formatter = HTMLPrinter::default();
     workout.walk(&mut formatter);
 
-    let cst_str = format!("{tree:#?}");
+    let hir = hir::Workout::lower(workout);
+    let hir_str = format!("{hir:#?}");
 
     ParseResult {
         cst_str,
         formatted_str: formatter.0,
+        hir_str,
     }
 }
 
