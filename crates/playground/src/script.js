@@ -9,8 +9,9 @@ const main = (bindings) => {
 
   const onInput = (input) => {
     try {
-      const treeStr = parseTree(input);
-      cstOut.textContent = treeStr;
+      const { cst_str, formatted_str } = parseTree(input);
+      cstOut.textContent = cst_str;
+      formattedOut.innerHTML = formatted_str;
       console.log("ok");
     } catch (e) {
       console.error(e);
