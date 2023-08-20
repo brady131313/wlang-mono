@@ -68,7 +68,7 @@ pub trait AstTree<'i>: Sized {
 pub trait AstToken<'i>: Sized {
     fn cast(token: &'i Token) -> Option<Self>;
 
-    fn text(&self, source: &str) -> &str;
+    fn text<'s>(&self, source: &'s str) -> &'s str;
 
     fn span(&self) -> TextRange;
 }
@@ -102,9 +102,8 @@ macro_rules! impl_ast_token {
                 }
             }
 
-            fn text(&self, source: &str) -> &str {
-                // self.0.text
-                todo!()
+            fn text<'s>(&self, source: &'s str) -> &'s str {
+                &source[self.span()]
             }
 
             fn span(&self) -> TextRange {
@@ -143,8 +142,8 @@ impl<'i> Workout<'i> {
         child_trees(self.0)
     }
 
-    pub fn walk<W: TreeWalker>(&self, walker: &mut W) {
-        self.0.walk(walker)
+    pub fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
+        self.0.walk(walker, source)
     }
 }
 
@@ -215,7 +214,7 @@ impl<'i> AstToken<'i> for WeightLiteral<'i> {
         }
     }
 
-    fn text(&self, source: &str) -> &str {
+    fn text<'s>(&self, source: &'s str) -> &'s str {
         match self {
             WeightLiteral::Float(float) => float.text(source),
             WeightLiteral::Integer(integer) => integer.text(source),
@@ -283,7 +282,7 @@ impl<'i> AstToken<'i> for TimeUnit<'i> {
         }
     }
 
-    fn text(&self, source: &str) -> &str {
+    fn text<'s>(&self, source: &'s str) -> &'s str {
         match self {
             TimeUnit::Hour(hour) => hour.text(source),
             TimeUnit::Minute(minute) => minute.text(source),
@@ -356,51 +355,77 @@ impl<'i> Integer<'i> {
 }
 
 pub trait TreeWalker {
-    fn token(&mut self, token: &Token);
+    type Err;
 
-    fn start_tree(&mut self, kind: TreeKind);
+    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err>;
 
-    fn end_tree(&mut self, kind: TreeKind);
+    fn start_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err>;
+
+    fn end_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err>;
 }
 
 impl Tree {
-    fn print<W: Write>(&self, source: &str, buf: &mut W, level: usize) -> std::fmt::Result {
-        let indent = "  ".repeat(level);
-        write!(buf, "{indent}{:?}\n", self.kind)?;
+    fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
+        walker.start_tree(self.kind)?;
 
         for child in &self.children {
             match child {
-                Child::Token(token) => {
-                    let text = &source[token.span];
-                    match token.kind {
-                        TokenKind::Space => write!(buf, "{indent}  Space({})\n", text.len())?,
-                        TokenKind::Newline => write!(buf, "{indent}  Nl({})\n", text.len())?,
-                        _ => write!(buf, "{indent}  '{}'\n", text)?,
-                    }
-                }
-                Child::Tree(tree) => tree.print(source, buf, level + 1)?,
+                Child::Token(token) => walker.token(token, source)?,
+                Child::Tree(tree) => tree.walk(walker, source)?,
             }
         }
 
+        walker.end_tree(self.kind)?;
         Ok(())
     }
+}
 
-    fn walk<W: TreeWalker>(&self, walker: &mut W) {
-        walker.start_tree(self.kind);
+struct CstPrinter<W> {
+    level: isize,
+    out: W,
+}
 
-        for child in &self.children {
-            match child {
-                Child::Token(token) => walker.token(token),
-                Child::Tree(tree) => tree.walk(walker),
-            }
+impl<W> CstPrinter<W> {
+    fn new(out: W) -> Self {
+        Self { level: -1, out }
+    }
+
+    fn indent(&self) -> String {
+        // safe because start_tree is always called first, which increments level to 0 on init
+        "  ".repeat(self.level as usize)
+    }
+}
+
+impl<W: Write> TreeWalker for CstPrinter<W> {
+    type Err = std::fmt::Error;
+
+    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err> {
+        let text = &source[token.span];
+        let indent = self.indent();
+
+        match token.kind {
+            TokenKind::Space => write!(self.out, "{indent}  Space({})\n", text.len()),
+            TokenKind::Newline => write!(self.out, "{indent}  Nl({})\n", text.len()),
+            _ => write!(self.out, "{indent}  '{text}'\n"),
         }
+    }
 
-        walker.end_tree(self.kind);
+    fn start_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err> {
+        self.level += 1;
+
+        let indent = self.indent();
+        write!(self.out, "{indent}{:?}\n", kind)
+    }
+
+    fn end_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
+        self.level -= 1;
+        Ok(())
     }
 }
 
 impl<'i> Debug for SourceTree<'i> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.tree.print(self.source, f, 0)
+        let mut cst_printer = CstPrinter::new(f);
+        self.tree.walk(&mut cst_printer, self.source)
     }
 }

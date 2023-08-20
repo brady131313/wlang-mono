@@ -1,7 +1,7 @@
 use console_error_panic_hook::set_once as set_panic_hook;
 use wasm_bindgen::prelude::*;
 use wlang::{
-    ast::{AstTree, TreeKind, TreeWalker, Workout},
+    ast::{self, AstTree, SourceTree, TreeKind, TreeWalker, Workout},
     hir,
     lexer::{lex, TokenKind},
     parser::parse,
@@ -51,11 +51,13 @@ impl HTMLPrinter {
 }
 
 impl TreeWalker for HTMLPrinter {
-    fn token(&mut self, token: &wlang::ast::Token) {
+    type Err = ();
+
+    fn token(&mut self, token: &wlang::ast::Token, source: &str) -> Result<(), ()> {
         let text = match token.kind {
             TokenKind::Space => " ",
             TokenKind::Newline => "\n",
-            _ => token.text,
+            _ => &source[token.span],
         };
 
         if let Some(tag) = Self::token_tag(token.kind) {
@@ -65,47 +67,68 @@ impl TreeWalker for HTMLPrinter {
         } else {
             self.0.push_str(text);
         }
+
+        Ok(())
     }
 
-    fn start_tree(&mut self, kind: TreeKind) {
+    fn start_tree(&mut self, kind: TreeKind) -> Result<(), ()> {
         if let Some(tag) = Self::tree_tag(kind) {
             self.tag_open(tag);
         }
+
+        Ok(())
     }
 
-    fn end_tree(&mut self, kind: TreeKind) {
+    fn end_tree(&mut self, kind: TreeKind) -> Result<(), ()> {
         if Self::tree_tag(kind).is_some() {
             self.tag_close();
         }
+
+        Ok(())
     }
 }
 
-#[wasm_bindgen(getter_with_clone)]
-pub struct ParseResult {
-    pub cst_str: String,
-    pub formatted_str: String,
-    pub hir_str: String,
+#[wasm_bindgen]
+pub struct WorkoutCst {
+    tree: ast::Tree,
+    source: String,
 }
 
-#[wasm_bindgen(js_name = parseTree)]
-pub fn parse_tree(input: &str) -> ParseResult {
-    let tokens = lex(input);
-    let (tree, errors) = parse(tokens);
-    console_log!("{errors:#?}");
-    let cst_str = format!("{tree:#?}");
+#[wasm_bindgen]
+impl WorkoutCst {
+    #[wasm_bindgen(constructor)]
+    pub fn new(input: &str) -> Self {
+        let tokens = lex(input);
+        let (tree, errors) = parse(tokens);
+        console_log!("{errors:#?}");
 
-    let workout = Workout::cast(&tree).unwrap();
+        Self {
+            tree,
+            source: input.to_string(),
+        }
+    }
 
-    let mut formatter = HTMLPrinter::default();
-    workout.walk(&mut formatter);
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_string(&self) -> String {
+        let source_tree = SourceTree::new(&self.source, &self.tree);
+        format!("{source_tree:#?}")
+    }
 
-    let hir = hir::Workout::lower(workout);
-    let hir_str = format!("{hir:#?}");
+    #[wasm_bindgen(js_name = hirString)]
+    pub fn hir_string(&self) -> String {
+        let workout = Workout::cast(&self.tree).unwrap();
+        let hir = hir::Workout::lower(workout, &self.source);
+        format!("{hir:#?}")
+    }
 
-    ParseResult {
-        cst_str,
-        formatted_str: formatter.0,
-        hir_str,
+    #[wasm_bindgen(js_name = formattedString)]
+    pub fn formatted_string(&self) -> String {
+        let workout = Workout::cast(&self.tree).unwrap();
+
+        let mut formatter = HTMLPrinter::default();
+        workout.walk(&mut formatter, &self.source).unwrap();
+
+        formatter.0
     }
 }
 

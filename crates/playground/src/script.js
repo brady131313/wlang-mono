@@ -1,6 +1,6 @@
 const main = (bindings) => {
   console.log("WASM Running", Object.keys(bindings));
-  const { parseTree } = bindings;
+  const { WorkoutCst } = bindings;
 
   const input = document.querySelector("#input");
   const cstOut = document.querySelector("#cst");
@@ -9,11 +9,11 @@ const main = (bindings) => {
 
   const onInput = (input) => {
     try {
-      const { cst_str, formatted_str, hir_str } = parseTree(input);
-      cstOut.textContent = cst_str;
-      formattedOut.innerHTML = formatted_str;
-      hirOut.textContent = hir_str;
-      console.log("ok");
+      const cst = new WorkoutCst(input);
+
+      cstOut.textContent = cst.toString();
+      hirOut.textContent = cst.hirString();
+      formattedOut.innerHTML = cst.formattedString();
     } catch (e) {
       console.error(e);
     }
