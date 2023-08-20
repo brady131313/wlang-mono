@@ -56,8 +56,8 @@ impl ParseError {
     }
 }
 
-struct Parser<'i> {
-    tokens: Vec<Token<'i>>,
+struct Parser {
+    tokens: Vec<Token>,
     pos: usize,
     fuel: Cell<u32>,
     events: Vec<Event>,
@@ -71,8 +71,8 @@ pub fn parse(tokens: Vec<Token>) -> (Tree, Vec<ParseError>) {
     p.build_tree()
 }
 
-impl<'i> Parser<'i> {
-    pub fn new(tokens: Vec<Token<'i>>) -> Self {
+impl Parser {
+    pub fn new(tokens: Vec<Token>) -> Self {
         Self {
             tokens,
             pos: 0,
@@ -209,7 +209,7 @@ impl<'i> Parser<'i> {
         }
     }
 
-    fn build_tree(self) -> (Tree<'i>, Vec<ParseError>) {
+    fn build_tree(self) -> (Tree, Vec<ParseError>) {
         let mut tokens = self.tokens.into_iter();
         let mut events = self.events;
         let mut stack = Vec::new();
@@ -412,12 +412,13 @@ mod tests {
         ($input:expr, $errors:expr) => {{
             let tokens = lex($input);
             let (tree, errors) = parse(tokens);
+            let source_tree = crate::ast::SourceTree::new($input, &tree);
 
             insta::with_settings!({
                 description => $input,
                 omit_expression => true
             }, {
-                insta::assert_debug_snapshot!(tree);
+                insta::assert_debug_snapshot!(source_tree);
             });
             assert_eq!(errors, $errors);
         }};

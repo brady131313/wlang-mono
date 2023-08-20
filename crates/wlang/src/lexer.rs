@@ -1,4 +1,5 @@
 use logos::{Lexer, Logos};
+use text_size::{TextRange, TextSize};
 
 use crate::ast::Token;
 
@@ -6,9 +7,13 @@ pub fn lex(input: &str) -> Vec<Token> {
     let mut lexer = TokenKind::lexer(input);
     let mut tokens = Vec::new();
     while let Some(kind) = lexer.next() {
+        let span = lexer.span();
         tokens.push(Token {
             kind: kind.unwrap_or(TokenKind::Error),
-            text: lexer.slice(),
+            span: TextRange::new(
+                TextSize::new(span.start as u32),
+                TextSize::new(span.end as u32),
+            ),
         });
     }
 
