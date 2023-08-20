@@ -1,20 +1,27 @@
-import { useEffect, useState } from "react";
-import init, { add, greet } from "@rsw/weightroom";
+import { useEffect } from "react";
+import init, { WorkoutCst } from "@rsw/weightroom";
 
 function App() {
-  const [count, setCount] = useState(0);
-
   useEffect(() => {
-    (async () => {
+    const loadWasm = async () => {
       await init();
-    })();
-  }, []);
+    };
+
+    loadWasm();
+  });
+
+  const parseInput = (input: string) => {
+    try {
+      const cst = new WorkoutCst(input);
+      console.log(cst.toString());
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="card">
-      <button onClick={() => setCount(add(5, 10))}>
-        count is {count}
-      </button>
+      <textarea onChange={(e) => parseInput(e.target.value)} />
     </div>
   );
 }
