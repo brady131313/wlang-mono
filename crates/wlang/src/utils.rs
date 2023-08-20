@@ -37,6 +37,33 @@ const fn token_set_from_array(kinds: &[TokenKind], idx: usize, current: TokenSet
     }
 }
 
+#[cfg(feature = "serde")]
+impl serde::Serialize for TokenSet {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let kinds = self.kinds();
+        kinds.serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for TokenSet {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let kinds = Vec::<TokenKind>::deserialize(deserializer)?;
+        let mut set = TokenSet::default();
+        for kind in kinds {
+            set = set.with_kind(kind);
+        }
+
+        Ok(set)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,10 +1,11 @@
 use console_error_panic_hook::set_once as set_panic_hook;
+use gloo_utils::format::JsValueSerdeExt;
 use wasm_bindgen::prelude::*;
 use wlang::{
     ast::{self, AstTree, SourceTree, TreeKind, TreeWalker, Workout},
     hir,
     lexer::{lex, TokenKind},
-    parser::parse,
+    parser::{parse, ParseError},
 };
 
 #[wasm_bindgen]
@@ -92,6 +93,7 @@ impl TreeWalker for HTMLPrinter {
 pub struct WorkoutCst {
     tree: ast::Tree,
     source: String,
+    errors: Vec<ParseError>,
 }
 
 #[wasm_bindgen]
@@ -100,11 +102,11 @@ impl WorkoutCst {
     pub fn new(input: &str) -> Self {
         let tokens = lex(input);
         let (tree, errors) = parse(tokens);
-        console_log!("{errors:#?}");
 
         Self {
             tree,
             source: input.to_string(),
+            errors,
         }
     }
 
@@ -112,13 +114,6 @@ impl WorkoutCst {
     pub fn to_string(&self) -> String {
         let source_tree = SourceTree::new(&self.source, &self.tree);
         format!("{source_tree:#?}")
-    }
-
-    #[wasm_bindgen(js_name = hirString)]
-    pub fn hir_string(&self) -> String {
-        let workout = Workout::cast(&self.tree).unwrap();
-        let hir = hir::Workout::lower(workout, &self.source);
-        format!("{hir:#?}")
     }
 
     #[wasm_bindgen(js_name = formattedString)]
@@ -129,6 +124,32 @@ impl WorkoutCst {
         workout.walk(&mut formatter, &self.source).unwrap();
 
         formatter.0
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn errors(&self) -> Vec<JsValue> {
+        self.errors
+            .iter()
+            .map(|e| JsValue::from_serde(e).unwrap())
+            .collect()
+    }
+}
+
+#[wasm_bindgen]
+pub struct WorkoutHir(hir::Workout);
+
+#[wasm_bindgen]
+impl WorkoutHir {
+    #[wasm_bindgen(constructor)]
+    pub fn new(cst: WorkoutCst) -> Self {
+        let workout = Workout::cast(&cst.tree).unwrap();
+        let hir = hir::Workout::lower(workout, &cst.source);
+        Self(hir)
+    }
+
+    #[wasm_bindgen(js_name = toString)]
+    pub fn to_string(&self) -> String {
+        format!("{:#?}", self.0)
     }
 }
 

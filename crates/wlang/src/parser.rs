@@ -21,12 +21,14 @@ struct MarkClosed {
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ParseError {
     token_idx: usize,
     kind: ParseErrorKind,
 }
 
 #[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ParseErrorKind {
     Expected(TokenKind),
     ExpectedOneOf(TokenSet),

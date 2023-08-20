@@ -7,6 +7,8 @@ edition = "2021"
 
 [dependencies]
 console_error_panic_hook = "0.1.7"
+gloo-utils = { version = "0.2.0", features = ["serde"] }
 wasm-bindgen = "0.2.87"
 web-sys = { version = "0.3.64", features = ["Window", "Document", "HtmlElement", "Node", "Text"] }
-wlang = { path = '../wlang' }
+
+wlang = { path = '../wlang', features = ["serde"] }

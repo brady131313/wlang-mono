@@ -21,6 +21,7 @@ pub fn lex(input: &str) -> Vec<Token> {
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[repr(u8)]
 pub enum TokenKind {
     #[token("bw", ignore(ascii_case))]
