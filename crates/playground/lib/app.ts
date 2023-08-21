@@ -1,4 +1,3 @@
-import { WorkoutCst } from "playground";
 import Playground from "./Playground.svelte";
 
 const playground = new Playground({

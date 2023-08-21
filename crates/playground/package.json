@@ -4,14 +4,16 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently 'yarn serve:js' 'yarn watch:rs'",
+    "dev": "concurrently 'yarn serve:js' 'yarn watch:rs' 'yarn watch:css'",
     "serve:js": "node build.mjs",
-    "watch:rs": "onchange './src/*.*' -- wasm-pack build"
+    "watch:rs": "onchange './src/*.*' -- wasm-pack build",
+    "watch:css": "tailwindcss -i ./lib/app.css -o ./www/output.css --watch"
   },
   "dependencies": {
     "playground": "./pkg"
   },
   "devDependencies": {
+    "@tsconfig/svelte": "^5.0.0",
     "concurrently": "^8.2.0",
     "esbuild": "^0.19.2",
     "esbuild-plugin-wasm": "^1.1.0",
@@ -19,6 +21,7 @@
     "onchange": "^7.1.0",
     "svelte": "^4.2.0",
     "svelte-preprocess": "^5.0.4",
+    "tailwindcss": "^3.3.3",
     "typescript": "^5.1.6"
   }
 }
