@@ -33,6 +33,7 @@ pub enum ParseErrorKind {
     Expected(TokenKind),
     ExpectedOneOf(TokenSet),
     Custom(String),
+    UnexpectedEof,
 }
 
 impl ParseError {
@@ -54,6 +55,13 @@ impl ParseError {
         Self {
             token_idx: idx,
             kind: ParseErrorKind::ExpectedOneOf(set),
+        }
+    }
+
+    pub fn unexpected_eof(idx: usize) -> Self {
+        Self {
+            token_idx: idx,
+            kind: ParseErrorKind::UnexpectedEof,
         }
     }
 }
@@ -196,10 +204,16 @@ impl Parser {
     }
 
     fn advance_with_error(&mut self, error: &str) {
+        if self.eof() {
+            self.errors.push(ParseError::unexpected_eof(self.pos));
+            return;
+        }
+
         let m = self.open();
         self.errors
             .push(ParseError::custom(self.pos, format!("{error}")));
         self.advance();
+
         self.close(m, TreeKind::Error);
     }
 
@@ -534,5 +548,10 @@ bw x3"
             "#Bench Press\n225 xbench",
             [ParseError::expected(6, TokenKind::Integer)]
         );
+    }
+
+    #[test]
+    fn fuzz_only_newline() {
+        parse_snapshot!("\n", [ParseError::unexpected_eof(1)]);
     }
 }
