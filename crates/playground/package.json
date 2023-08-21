@@ -4,7 +4,8 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "serve": "node build.mjs",
+    "dev": "concurrently 'yarn serve:js' 'yarn watch:rs'",
+    "serve:js": "node build.mjs",
     "watch:rs": "onchange './src/*.*' -- wasm-pack build"
   },
   "dependencies": {
@@ -14,6 +15,10 @@
     "concurrently": "^8.2.0",
     "esbuild": "^0.19.2",
     "esbuild-plugin-wasm": "^1.1.0",
-    "onchange": "^7.1.0"
+    "esbuild-svelte": "^0.7.4",
+    "onchange": "^7.1.0",
+    "svelte": "^4.2.0",
+    "svelte-preprocess": "^5.0.4",
+    "typescript": "^5.1.6"
   }
 }

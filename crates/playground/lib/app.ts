@@ -1,7 +1,9 @@
 import { WorkoutCst } from "playground";
+import Playground from "./Playground.svelte";
 
-const cst = new WorkoutCst("# Bency Press");
-console.log(cst.toString());
+const playground = new Playground({
+  target: document.body,
+});
 
 // ESBuild live refresh
 new EventSource("/esbuild").addEventListener("change", () => location.reload());
