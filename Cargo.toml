@@ -6,3 +6,6 @@ opt-level = 3
 
 [profile.dev.package.similar]
 opt-level = 3
+
+[profile.release.package.playground]
+opt-level = "s"

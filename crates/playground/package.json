@@ -1,0 +1,19 @@
+{
+  "name": "playground",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "serve": "node build.mjs",
+    "watch:rs": "onchange './src/*.*' -- wasm-pack build"
+  },
+  "dependencies": {
+    "playground": "./pkg"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0",
+    "esbuild": "^0.19.2",
+    "esbuild-plugin-wasm": "^1.1.0",
+    "onchange": "^7.1.0"
+  }
+}
