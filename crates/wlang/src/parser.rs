@@ -418,6 +418,7 @@ fn quantity(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
+    use crate::ast::PlainPrinter;
     use crate::lexer::lex;
 
     use super::*;
@@ -430,9 +431,15 @@ mod tests {
         ($input:expr, $errors:expr) => {{
             let tokens = lex($input);
             eprintln!("{tokens:?}");
-            let (tree, errors) = parse(tokens);
-            let source_tree = crate::ast::SourceTree::new($input, &tree);
 
+            let (tree, errors) = parse(tokens);
+
+            // make sure print to same as input
+            let mut printer = PlainPrinter::default();
+            tree.walk(&mut printer, $input).unwrap();
+            assert_eq!($input, printer.take());
+
+            let source_tree = crate::ast::SourceTree::new($input, &tree);
             insta::with_settings!({
                 description => $input,
                 omit_expression => true

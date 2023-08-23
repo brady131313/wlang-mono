@@ -365,7 +365,7 @@ pub trait TreeWalker {
 }
 
 impl Tree {
-    fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
+    pub fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
         walker.start_tree(self.kind)?;
 
         for child in &self.children {
@@ -376,6 +376,32 @@ impl Tree {
         }
 
         walker.end_tree(self.kind)?;
+        Ok(())
+    }
+}
+
+#[derive(Default)]
+pub struct PlainPrinter(String);
+
+impl PlainPrinter {
+    pub fn take(self) -> String {
+        self.0
+    }
+}
+
+impl TreeWalker for PlainPrinter {
+    type Err = std::fmt::Error;
+
+    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err> {
+        let text = &source[token.span];
+        write!(self.0, "{text}")
+    }
+
+    fn start_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
+        Ok(())
+    }
+
+    fn end_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
         Ok(())
     }
 }
