@@ -40,6 +40,7 @@ impl HTMLPrinter {
     fn tree_tag(kind: TreeKind) -> Option<&'static str> {
         match kind {
             TreeKind::SetGroup => Some("set-group"),
+            TreeKind::Exercise => Some("exercise"),
             TreeKind::Error => Some("error"),
             _ => None,
         }
@@ -136,7 +137,7 @@ pub struct WorkoutHir(hir::Workout);
 #[wasm_bindgen]
 impl WorkoutHir {
     #[wasm_bindgen(constructor)]
-    pub fn new(cst: WorkoutCst) -> Self {
+    pub fn new(cst: &WorkoutCst) -> Self {
         let workout = Workout::cast(&cst.tree).unwrap();
         let hir = hir::Workout::lower(workout, &cst.source);
         Self(hir)
@@ -146,4 +147,9 @@ impl WorkoutHir {
     pub fn to_string(&self) -> String {
         format!("{:#?}", self.0)
     }
+}
+
+#[wasm_bindgen]
+pub fn add(a: usize, b: usize) -> usize {
+    a + b + 1
 }
