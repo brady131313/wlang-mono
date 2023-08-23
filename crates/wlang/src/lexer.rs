@@ -1,4 +1,4 @@
-use logos::{Lexer, Logos};
+use logos::{Lexer, Logos, Source};
 use text_size::{TextRange, TextSize};
 
 use crate::ast::Token;
@@ -69,16 +69,16 @@ impl TokenKind {
 }
 
 fn ident(lex: &mut Lexer<TokenKind>) {
-    let mut bytes_till_end = 0;
     let mut last_significant = 0;
-    for c in lex.remainder().chars() {
+    let remaining = lex.remainder();
+
+    for (i, c) in remaining.char_indices() {
         if matches!(c, ',' | '\n') {
             break;
         }
-        bytes_till_end += 1;
 
         if !matches!(c, ' ' | '\t') {
-            last_significant = bytes_till_end;
+            last_significant = remaining.find_boundary(i + 1);
         }
     }
 
@@ -193,5 +193,10 @@ bw 30s
         assert_eq!(lex_kind("Bench Press"), [Ident]);
         assert_eq!(lex_kind("Bench    Press"), [Ident]);
         assert_eq!(lex_kind("Bench    Press    "), [Ident, Space]);
+    }
+
+    #[test]
+    fn fuzz_cases() {
+        assert_eq!(lex_kind("OӴ"), [Ident]);
     }
 }

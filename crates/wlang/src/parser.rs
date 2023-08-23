@@ -350,6 +350,8 @@ fn set(p: &mut Parser) {
         } else if !p.eof() {
             p.advance_with_error("expected weight");
         }
+    } else {
+        p.advance_with_error("expected set");
     }
 
     // consume trailing spaces
@@ -427,6 +429,7 @@ mod tests {
 
         ($input:expr, $errors:expr) => {{
             let tokens = lex($input);
+            eprintln!("{tokens:?}");
             let (tree, errors) = parse(tokens);
             let source_tree = crate::ast::SourceTree::new($input, &tree);
 
@@ -553,5 +556,18 @@ bw x3"
     #[test]
     fn fuzz_only_newline() {
         parse_snapshot!("\n", [ParseError::unexpected_eof(1)]);
+    }
+
+    #[test]
+    fn fuzz_case() {
+        parse_snapshot!(
+            "# Bess\0\0\0\n255 x;2\n \n257x8\n# Pull Up3\nBWxs x88",
+            [
+                ParseError::expected(7, TokenKind::Integer),
+                ParseError::custom(20, String::from("expected set")),
+                ParseError::expected(21, TokenKind::Newline),
+                ParseError::expected(22, TokenKind::Integer),
+            ]
+        );
     }
 }
