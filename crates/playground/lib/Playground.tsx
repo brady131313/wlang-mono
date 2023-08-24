@@ -1,5 +1,6 @@
 import { WorkoutCst, WorkoutHir } from "playground/playground";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import Editor from "./Editor";
 
 const BORDER_CLASS = "border border-gray-400 rounded-xl flex-grow p-3";
 
@@ -22,25 +23,38 @@ const GridItem: React.FC<
 
 function Playground() {
   const [input, setInput] = useState("");
+  const [completions, setCompletions] = useState<string[]>([]);
   const [cst, setCst] = useState<WorkoutCst | null>(null);
   const [hir, setHir] = useState<WorkoutHir | null>(null);
 
-  useEffect(() => {
+  const handleInput = (input: string) => {
+    setInput(input);
+
+    const newCompletions = [];
+    if (input.charAt(0) == "n") {
+      newCompletions.push("nice");
+    }
+    setCompletions(newCompletions);
+
     const newCst = new WorkoutCst(input);
     setCst(newCst);
 
     const newHir = new WorkoutHir(newCst);
     setHir(newHir);
-  }, [input, setCst]);
+  };
 
   return (
     <main className="min-h-screen max-h-screen w-full grid grid-cols-2 grid-rows-2 p-8 gap-8">
       <GridItem title="Workout Input">
-        <textarea
-          className={`${BORDER_CLASS} resize-none focus:outline-none focus:ring-4 focus:ring-gray-300/70`}
+        <Editor
           value={input}
-          onChange={(e) => setInput(e.target.value)}
-        />
+          onEdit={handleInput}
+          showMenu={completions.length > 0}
+        >
+          <ul className="bg-gray-50 p-1.5 rounded divide-y divide-gray-200">
+            {completions.map((c) => <li>{c}</li>)}
+          </ul>
+        </Editor>
       </GridItem>
       <GridItem title="Formatted">
         <div
