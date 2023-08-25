@@ -40,7 +40,8 @@ function Playground() {
     setCst(newCst);
 
     if (offset) {
-      console.log(newCst.lookupOffset(offset));
+      const lookup = newCst.lookupOffset(offset);
+      console.log({ kind: lookup?.treeKind, token: lookup?.token });
     }
 
     const newHir = new WorkoutHir(newCst);

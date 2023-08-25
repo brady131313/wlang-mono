@@ -1,7 +1,7 @@
 use text_size::TextRange;
 
 use crate::lexer::TokenKind;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use self::walker::TreeWalker;
 
@@ -24,6 +24,12 @@ pub enum TreeKind {
 pub struct Token {
     pub kind: TokenKind,
     pub span: TextRange,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {:?}", self.kind, self.span)
+    }
 }
 
 pub struct Tree {

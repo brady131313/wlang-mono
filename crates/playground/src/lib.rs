@@ -1,13 +1,16 @@
 mod utils;
 
 use gloo_utils::format::JsValueSerdeExt;
+use types::JSTokenContext;
 use wasm_bindgen::prelude::*;
 use wlang::{
-    ast::{self, walker::TreeWalker, AstTree, SourceTree, TreeKind, Workout},
+    ast::{self, walker::TreeWalker, AstTree, SourceTree, Token, TreeKind, Workout},
     hir,
     lexer::{lex, TokenKind},
     parser::{parse, ParseError},
 };
+
+pub mod types;
 
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
@@ -131,10 +134,10 @@ impl WorkoutCst {
     }
 
     #[wasm_bindgen(js_name = lookupOffset)]
-    pub fn lookup_offset(&self, offset: u32) -> Option<String> {
+    pub fn lookup_offset(&self, offset: u32) -> Option<JSTokenContext> {
         self.tree
             .lookup_offset(offset, &self.source)
-            .map(|t| format!("{:?}", t.kind))
+            .map(JSTokenContext::from)
     }
 }
 
@@ -154,9 +157,4 @@ impl WorkoutHir {
     pub fn to_string(&self) -> String {
         format!("{:#?}", self.0)
     }
-}
-
-#[wasm_bindgen]
-pub fn add(a: usize, b: usize) -> usize {
-    a + b + 1
 }

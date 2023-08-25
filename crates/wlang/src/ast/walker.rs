@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Write};
+use std::fmt::{Debug, Display, Write};
 
 use text_size::{TextRange, TextSize};
 
@@ -31,17 +31,20 @@ impl Tree {
         Ok(())
     }
 
-    pub fn lookup_span(&self, span: TextRange, source: &str) -> Option<Token> {
-        let mut walker = LookupSpan(span);
+    pub fn lookup_span(&self, span: TextRange, source: &str) -> Option<TokenContext> {
+        let mut walker = LookupSpan::new(span);
 
         if let Err(token) = self.walk(&mut walker, source) {
-            return Some(token);
+            return Some(TokenContext {
+                token,
+                tree_kind: walker.current_tree_kind,
+            });
         } else {
             return None;
         }
     }
 
-    pub fn lookup_offset(&self, offset: impl Into<TextSize>, source: &str) -> Option<Token> {
+    pub fn lookup_offset(&self, offset: impl Into<TextSize>, source: &str) -> Option<TokenContext> {
         let span = TextRange::empty(offset.into());
         self.lookup_span(span, source)
     }
@@ -123,14 +126,42 @@ impl<'i> Debug for SourceTree<'i> {
     }
 }
 
-pub struct LookupSpan(TextRange);
+/// Hold a token and the nearest tree kind its under
+pub struct TokenContext {
+    pub token: Token,
+    pub tree_kind: Option<TreeKind>,
+}
+
+impl Display for TokenContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(kind) = self.tree_kind {
+            write!(f, "{kind:?}({})", self.token)
+        } else {
+            write!(f, "{}", self.token)
+        }
+    }
+}
+
+pub struct LookupSpan {
+    target: TextRange,
+    current_tree_kind: Option<TreeKind>,
+}
+
+impl LookupSpan {
+    pub fn new(target: TextRange) -> Self {
+        Self {
+            target,
+            current_tree_kind: None,
+        }
+    }
+}
 
 impl TreeWalker for LookupSpan {
     /// use the Err variant to exit lookup early once we found containing span
     type Err = Token;
 
     fn token(&mut self, token: &Token, _source: &str) -> Result<(), Self::Err> {
-        if token.span.contains_range(self.0) {
+        if token.span.contains_range(self.target) {
             // stop walking tree, found match
             return Err(*token);
         }
@@ -138,11 +169,13 @@ impl TreeWalker for LookupSpan {
         return Ok(());
     }
 
-    fn start_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
+    fn start_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err> {
+        self.current_tree_kind = Some(kind);
         Ok(())
     }
 
     fn end_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
+        self.current_tree_kind = None;
         Ok(())
     }
 }
