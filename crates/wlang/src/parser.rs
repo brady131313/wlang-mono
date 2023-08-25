@@ -418,7 +418,7 @@ fn quantity(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::PlainPrinter;
+    use crate::ast::walker::PlainPrinter;
     use crate::lexer::lex;
 
     use super::*;

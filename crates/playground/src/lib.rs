@@ -3,7 +3,7 @@ mod utils;
 use gloo_utils::format::JsValueSerdeExt;
 use wasm_bindgen::prelude::*;
 use wlang::{
-    ast::{self, AstTree, SourceTree, TreeKind, TreeWalker, Workout},
+    ast::{self, walker::TreeWalker, AstTree, SourceTree, TreeKind, Workout},
     hir,
     lexer::{lex, TokenKind},
     parser::{parse, ParseError},
@@ -128,6 +128,13 @@ impl WorkoutCst {
             .iter()
             .map(|e| JsValue::from_serde(e).unwrap())
             .collect()
+    }
+
+    #[wasm_bindgen(js_name = lookupOffset)]
+    pub fn lookup_offset(&self, offset: u32) -> Option<String> {
+        self.tree
+            .lookup_offset(offset, &self.source)
+            .map(|t| format!("{:?}", t.kind))
     }
 }
 

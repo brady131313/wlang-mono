@@ -1,7 +1,11 @@
 use text_size::TextRange;
 
 use crate::lexer::TokenKind;
-use std::fmt::{Debug, Write};
+use std::fmt::Debug;
+
+use self::walker::TreeWalker;
+
+pub mod walker;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TreeKind {
@@ -351,107 +355,5 @@ impl_ast_token!(TokenKind::Integer);
 impl<'i> Integer<'i> {
     pub fn parse(&self, source: &str) -> usize {
         self.text(source).parse().unwrap()
-    }
-}
-
-pub trait TreeWalker {
-    type Err;
-
-    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err>;
-
-    fn start_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err>;
-
-    fn end_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err>;
-}
-
-impl Tree {
-    pub fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
-        walker.start_tree(self.kind)?;
-
-        for child in &self.children {
-            match child {
-                Child::Token(token) => walker.token(token, source)?,
-                Child::Tree(tree) => tree.walk(walker, source)?,
-            }
-        }
-
-        walker.end_tree(self.kind)?;
-        Ok(())
-    }
-}
-
-#[derive(Default)]
-pub struct PlainPrinter(String);
-
-impl PlainPrinter {
-    pub fn take(self) -> String {
-        self.0
-    }
-}
-
-impl TreeWalker for PlainPrinter {
-    type Err = std::fmt::Error;
-
-    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err> {
-        let text = &source[token.span];
-        write!(self.0, "{text}")
-    }
-
-    fn start_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
-        Ok(())
-    }
-
-    fn end_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
-        Ok(())
-    }
-}
-
-struct CstPrinter<W> {
-    level: isize,
-    out: W,
-}
-
-impl<W> CstPrinter<W> {
-    fn new(out: W) -> Self {
-        Self { level: -1, out }
-    }
-
-    fn indent(&self) -> String {
-        // safe because start_tree is always called first, which increments level to 0 on init
-        "  ".repeat(self.level as usize)
-    }
-}
-
-impl<W: Write> TreeWalker for CstPrinter<W> {
-    type Err = std::fmt::Error;
-
-    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err> {
-        let text = &source[token.span];
-        let indent = self.indent();
-
-        match token.kind {
-            TokenKind::Space => write!(self.out, "{indent}  Space({})\n", text.len()),
-            TokenKind::Newline => write!(self.out, "{indent}  Nl({})\n", text.len()),
-            _ => write!(self.out, "{indent}  '{text}'\n"),
-        }
-    }
-
-    fn start_tree(&mut self, kind: TreeKind) -> Result<(), Self::Err> {
-        self.level += 1;
-
-        let indent = self.indent();
-        write!(self.out, "{indent}{:?}\n", kind)
-    }
-
-    fn end_tree(&mut self, _kind: TreeKind) -> Result<(), Self::Err> {
-        self.level -= 1;
-        Ok(())
-    }
-}
-
-impl<'i> Debug for SourceTree<'i> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut cst_printer = CstPrinter::new(f);
-        self.tree.walk(&mut cst_printer, self.source)
     }
 }

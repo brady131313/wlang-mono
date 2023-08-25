@@ -27,7 +27,7 @@ function Playground() {
   const [cst, setCst] = useState<WorkoutCst | null>(null);
   const [hir, setHir] = useState<WorkoutHir | null>(null);
 
-  const handleInput = (input: string) => {
+  const handleInput = (input: string, offset?: number) => {
     setInput(input);
 
     const newCompletions = [];
@@ -38,6 +38,10 @@ function Playground() {
 
     const newCst = new WorkoutCst(input);
     setCst(newCst);
+
+    if (offset) {
+      console.log(newCst.lookupOffset(offset));
+    }
 
     const newHir = new WorkoutHir(newCst);
     setHir(newHir);

@@ -3,11 +3,12 @@ import { ReactNode, useRef, useState } from "react";
 type CaretPosition = {
   left: number;
   top: number;
+  offset: number;
 };
 
 interface EditorProps {
   value: string;
-  onEdit: (input: string) => void;
+  onEdit: (input: string, offset?: number) => void;
   children?: ReactNode;
   showMenu?: boolean;
 }
@@ -41,6 +42,7 @@ const getCaretRect = (textarea: HTMLTextAreaElement): CaretPosition | null => {
     return {
       left: caretRect.left - textareaRect.left,
       top: caretRect.top - textareaRect.top - 8,
+      offset: start,
     };
   } else {
     return null;
@@ -56,7 +58,7 @@ function Editor({ value, onEdit, children, showMenu = true }: EditorProps) {
     const rect = inputRef.current && getCaretRect(inputRef.current);
     setCaretPos(rect);
 
-    onEdit(input);
+    onEdit(input, rect?.offset);
   };
 
   return (
