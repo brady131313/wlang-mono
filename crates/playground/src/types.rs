@@ -1,7 +1,9 @@
 use wasm_bindgen::prelude::*;
+
 use wlang::{
     ast::{walker::TokenContext, Token, TreeKind},
     lexer::TokenKind,
+    parser::ParseError,
 };
 
 #[wasm_bindgen]
@@ -79,10 +81,29 @@ impl From<TokenKind> for JSTokenKind {
 }
 
 #[wasm_bindgen]
+#[derive(Debug, Clone, Copy)]
 pub struct JSToken {
     kind: JSTokenKind,
     start: u32,
     end: u32,
+}
+
+#[wasm_bindgen]
+impl JSToken {
+    #[wasm_bindgen(getter)]
+    pub fn kind(&self) -> JSTokenKind {
+        self.kind
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn start(&self) -> u32 {
+        self.start
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn end(&self) -> u32 {
+        self.end
+    }
 }
 
 impl From<Token> for JSToken {
@@ -96,18 +117,10 @@ impl From<Token> for JSToken {
 }
 
 #[wasm_bindgen]
+#[derive(Debug, Clone, Copy)]
 pub struct JSTokenContext {
     tree_kind: Option<JSTreeKind>,
-    token: Token,
-}
-
-impl From<TokenContext> for JSTokenContext {
-    fn from(value: TokenContext) -> Self {
-        Self {
-            tree_kind: value.tree_kind.map(JSTreeKind::from),
-            token: value.token,
-        }
-    }
+    token: JSToken,
 }
 
 #[wasm_bindgen]
@@ -118,7 +131,26 @@ impl JSTokenContext {
     }
 
     #[wasm_bindgen(getter)]
-    pub fn token(&self) -> String {
-        format!("{}", self.token)
+    pub fn token(&self) -> JSToken {
+        self.token
+    }
+}
+
+impl From<TokenContext> for JSTokenContext {
+    fn from(value: TokenContext) -> Self {
+        Self {
+            tree_kind: value.tree_kind.map(JSTreeKind::from),
+            token: JSToken::from(value.token),
+        }
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Debug)]
+pub struct JSParseError(ParseError);
+
+impl From<ParseError> for JSParseError {
+    fn from(value: ParseError) -> Self {
+        Self(value)
     }
 }

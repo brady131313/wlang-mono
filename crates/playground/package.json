@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "concurrently 'yarn serve:js' 'yarn watch:rs' 'yarn watch:css'",
     "serve:js": "node build.mjs",
-    "watch:rs": "onchange './src/*.*' -- wasm-pack build",
+    "build:rs": "wasm-pack build --weak-refs --reference-types",
+    "watch:rs": "onchange './src/*.*' -- yarn build:rs",
     "watch:css": "tailwindcss -i ./lib/app.css -o ./www/output.css --watch"
   },
   "dependencies": {

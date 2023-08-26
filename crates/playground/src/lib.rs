@@ -1,10 +1,9 @@
 mod utils;
 
-use gloo_utils::format::JsValueSerdeExt;
-use types::JSTokenContext;
+use types::{JSParseError, JSTokenContext};
 use wasm_bindgen::prelude::*;
 use wlang::{
-    ast::{self, walker::TreeWalker, AstTree, SourceTree, Token, TreeKind, Workout},
+    ast::{self, walker::TreeWalker, AstTree, SourceTree, TreeKind, Workout},
     hir,
     lexer::{lex, TokenKind},
     parser::{parse, ParseError},
@@ -125,13 +124,13 @@ impl WorkoutCst {
         formatter.0
     }
 
-    #[wasm_bindgen(getter)]
-    pub fn errors(&self) -> Vec<JsValue> {
-        self.errors
-            .iter()
-            .map(|e| JsValue::from_serde(e).unwrap())
-            .collect()
-    }
+    // #[wasm_bindgen(getter)]
+    // pub fn errors(&self) -> Vec<JSParseError> {
+    //     self.errors
+    //         .iter()
+    //         .map(|e| serde_wasm_bindgen::to_value(e).unwrap())
+    //         .collect()
+    // }
 
     #[wasm_bindgen(js_name = lookupOffset)]
     pub fn lookup_offset(&self, offset: u32) -> Option<JSTokenContext> {
