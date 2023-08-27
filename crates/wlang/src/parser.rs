@@ -411,22 +411,11 @@ fn quantity(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt::Debug;
 
-    use crate::ast::walker::{CstPrinter, PlainPrinter, SyntaxNodeExt};
+    use crate::ast::walker::{PlainPrinter, SyntaxNodeExt};
+    use crate::ast::SourceTree;
 
     use super::*;
-
-    struct SourceTree<'t> {
-        tree: &'t SyntaxTree,
-    }
-
-    impl<'i> Debug for SourceTree<'i> {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut cst_printer = CstPrinter::new(f);
-            self.tree.root().walk(&mut cst_printer, self.tree)
-        }
-    }
 
     macro_rules! parse_snapshot {
         ($input:expr) => {{
@@ -442,7 +431,7 @@ mod tests {
             root.walk(&mut printer, &tree).unwrap();
             assert_eq!($input, printer.take());
 
-            let source_tree = SourceTree { tree: &tree };
+            let source_tree = SourceTree::new(&tree);
             insta::with_settings!({
                 description => $input,
                 omit_expression => true

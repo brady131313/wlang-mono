@@ -1,14 +1,14 @@
 use wasm_bindgen::prelude::*;
 
 use wlang::{
-    ast::{walker::TokenContext, Token, TreeKind},
-    lexer::TokenKind,
+    ast::{walker::TokenContext, NodeKind},
+    lexer::{Token, TokenKind},
     parser::ParseError,
 };
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy)]
-pub enum JSTreeKind {
+pub enum JSNodeKind {
     Error = "error",
     Workout = "workout",
     Exercise = "exercise",
@@ -20,18 +20,18 @@ pub enum JSTreeKind {
     LongDuration = "long_duration",
 }
 
-impl From<TreeKind> for JSTreeKind {
-    fn from(value: TreeKind) -> Self {
+impl From<NodeKind> for JSNodeKind {
+    fn from(value: NodeKind) -> Self {
         match value {
-            TreeKind::Error => Self::Error,
-            TreeKind::Workout => Self::Workout,
-            TreeKind::Exercise => Self::Exercise,
-            TreeKind::SetGroup => Self::SetGroup,
-            TreeKind::Set => Self::Set,
-            TreeKind::Weight => Self::Weight,
-            TreeKind::Reps => Self::Reps,
-            TreeKind::SimpleDuration => Self::SimpleDuration,
-            TreeKind::LongDuration => Self::LongDuration,
+            NodeKind::Error => Self::Error,
+            NodeKind::Workout => Self::Workout,
+            NodeKind::Exercise => Self::Exercise,
+            NodeKind::SetGroup => Self::SetGroup,
+            NodeKind::Set => Self::Set,
+            NodeKind::Weight => Self::Weight,
+            NodeKind::Reps => Self::Reps,
+            NodeKind::SimpleDuration => Self::SimpleDuration,
+            NodeKind::LongDuration => Self::LongDuration,
         }
     }
 }
@@ -110,8 +110,8 @@ impl From<Token> for JSToken {
     fn from(value: Token) -> Self {
         Self {
             kind: value.kind.into(),
-            start: value.span.start().into(),
-            end: value.span.end().into(),
+            start: value.range.start().into(),
+            end: value.range.end().into(),
         }
     }
 }
@@ -119,14 +119,14 @@ impl From<Token> for JSToken {
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy)]
 pub struct JSTokenContext {
-    tree_kind: Option<JSTreeKind>,
+    tree_kind: Option<JSNodeKind>,
     token: JSToken,
 }
 
 #[wasm_bindgen]
 impl JSTokenContext {
     #[wasm_bindgen(getter = treeKind)]
-    pub fn tree_kind(&self) -> Option<JSTreeKind> {
+    pub fn tree_kind(&self) -> Option<JSNodeKind> {
         self.tree_kind
     }
 
@@ -139,7 +139,7 @@ impl JSTokenContext {
 impl From<TokenContext> for JSTokenContext {
     fn from(value: TokenContext) -> Self {
         Self {
-            tree_kind: value.tree_kind.map(JSTreeKind::from),
+            tree_kind: value.tree_kind.map(JSNodeKind::from),
             token: JSToken::from(value.token),
         }
     }

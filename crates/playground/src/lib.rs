@@ -3,9 +3,13 @@ mod utils;
 use types::{JSParseError, JSTokenContext};
 use wasm_bindgen::prelude::*;
 use wlang::{
-    ast::{self, walker::TreeWalker, AstTree, SourceTree, TreeKind, Workout},
+    ast::{
+        self,
+        walker::{SyntaxNodeExt, TreeWalker},
+        AstNode, NodeKind, SourceTree, SyntaxTree, Workout,
+    },
     hir,
-    lexer::{lex, TokenKind},
+    lexer::TokenKind,
     parser::{parse, ParseError},
 };
 
@@ -39,11 +43,11 @@ impl HTMLPrinter {
         }
     }
 
-    fn tree_tag(kind: TreeKind) -> Option<&'static str> {
+    fn node_tag(kind: NodeKind) -> Option<&'static str> {
         match kind {
-            TreeKind::SetGroup => Some("set-group"),
-            TreeKind::Exercise => Some("exercise"),
-            TreeKind::Error => Some("error"),
+            NodeKind::SetGroup => Some("set-group"),
+            NodeKind::Exercise => Some("exercise"),
+            NodeKind::Error => Some("error"),
             _ => None,
         }
     }
@@ -52,14 +56,14 @@ impl HTMLPrinter {
 impl TreeWalker for HTMLPrinter {
     type Err = ();
 
-    fn token(&mut self, token: &wlang::ast::Token, source: &str) -> Result<(), ()> {
-        let text = match token.kind {
+    fn token(&mut self, token: &ast::SyntaxToken, tree: &SyntaxTree) -> Result<(), Self::Err> {
+        let text = match token.kind(tree) {
             TokenKind::Space => " ",
             TokenKind::Newline => "\n",
-            _ => &source[token.span],
+            _ => token.text(tree),
         };
 
-        if let Some(tag) = Self::token_tag(token.kind) {
+        if let Some(tag) = Self::token_tag(token.kind(tree)) {
             self.tag_open(tag);
             self.0.push_str(text);
             self.tag_close();
@@ -70,16 +74,16 @@ impl TreeWalker for HTMLPrinter {
         Ok(())
     }
 
-    fn start_tree(&mut self, kind: TreeKind) -> Result<(), ()> {
-        if let Some(tag) = Self::tree_tag(kind) {
+    fn start_tree(&mut self, node: &ast::SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+        if let Some(tag) = Self::node_tag(node.kind(tree)) {
             self.tag_open(tag);
         }
 
         Ok(())
     }
 
-    fn end_tree(&mut self, kind: TreeKind) -> Result<(), ()> {
-        if Self::tree_tag(kind).is_some() {
+    fn end_tree(&mut self, node: &ast::SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+        if Self::node_tag(node.kind(tree)).is_some() {
             self.tag_close();
         }
 
@@ -89,8 +93,7 @@ impl TreeWalker for HTMLPrinter {
 
 #[wasm_bindgen]
 pub struct WorkoutCst {
-    tree: ast::Tree,
-    source: String,
+    tree: SyntaxTree,
     errors: Vec<ParseError>,
 }
 
@@ -98,28 +101,21 @@ pub struct WorkoutCst {
 impl WorkoutCst {
     #[wasm_bindgen(constructor)]
     pub fn new(input: &str) -> Self {
-        let tokens = lex(input);
-        let (tree, errors) = parse(tokens);
+        let (tree, errors) = parse(input);
 
-        Self {
-            tree,
-            source: input.to_string(),
-            errors,
-        }
+        Self { tree, errors }
     }
 
     #[wasm_bindgen(js_name = toString)]
     pub fn to_string(&self) -> String {
-        let source_tree = SourceTree::new(&self.source, &self.tree);
+        let source_tree = SourceTree::new(&self.tree);
         format!("{source_tree:#?}")
     }
 
     #[wasm_bindgen(js_name = formattedString)]
     pub fn formatted_string(&self) -> String {
-        let workout = Workout::cast(&self.tree).unwrap();
-
         let mut formatter = HTMLPrinter::default();
-        workout.walk(&mut formatter, &self.source).unwrap();
+        self.tree.root().walk(&mut formatter, &self.tree).unwrap();
 
         formatter.0
     }
@@ -135,7 +131,8 @@ impl WorkoutCst {
     #[wasm_bindgen(js_name = lookupOffset)]
     pub fn lookup_offset(&self, offset: u32) -> Option<JSTokenContext> {
         self.tree
-            .lookup_offset(offset, &self.source)
+            .root()
+            .lookup_offset(offset, &self.tree)
             .map(JSTokenContext::from)
     }
 }
@@ -147,8 +144,8 @@ pub struct WorkoutHir(hir::Workout);
 impl WorkoutHir {
     #[wasm_bindgen(constructor)]
     pub fn new(cst: &WorkoutCst) -> Self {
-        let workout = Workout::cast(&cst.tree).unwrap();
-        let hir = hir::Workout::lower(workout, &cst.source);
+        let workout = Workout::cast(cst.tree.root(), &cst.tree).unwrap();
+        let hir = hir::Workout::lower(workout, &cst.tree);
         Self(hir)
     }
 

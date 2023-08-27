@@ -3,6 +3,8 @@ use eventree::TextRange;
 use crate::lexer::TokenKind;
 use std::fmt::Debug;
 
+use self::walker::{CstPrinter, SyntaxNodeExt};
+
 pub mod walker;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,6 +54,23 @@ pub type SyntaxNode = eventree::SyntaxNode<TreeConfig>;
 pub type SyntaxToken = eventree::SyntaxToken<TreeConfig>;
 pub type SyntaxTree = eventree::SyntaxTree<TreeConfig>;
 pub type SyntaxBuilder = eventree::SyntaxBuilder<TreeConfig>;
+
+pub struct SourceTree<'t> {
+    tree: &'t SyntaxTree,
+}
+
+impl<'t> SourceTree<'t> {
+    pub fn new(tree: &'t SyntaxTree) -> Self {
+        Self { tree }
+    }
+}
+
+impl<'i> Debug for SourceTree<'i> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut cst_printer = CstPrinter::new(f);
+        self.tree.root().walk(&mut cst_printer, self.tree)
+    }
+}
 
 pub trait AstNode: Sized {
     fn cast(node: SyntaxNode, tree: &SyntaxTree) -> Option<Self>;
