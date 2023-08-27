@@ -1,13 +1,13 @@
 use std::cell::Cell;
 
 use crate::{
-    ast::{Child, Token, Tree, TreeKind},
-    lexer::TokenKind,
+    ast::{NodeKind, SyntaxBuilder, SyntaxTree},
+    lexer::{lex, Token, TokenKind},
     utils::TokenSet,
 };
 
 enum Event {
-    Open { kind: TreeKind },
+    Open { kind: NodeKind },
     Close,
     Advance,
 }
@@ -74,11 +74,12 @@ struct Parser {
     errors: Vec<ParseError>,
 }
 
-pub fn parse(tokens: Vec<Token>) -> (Tree, Vec<ParseError>) {
+pub fn parse(input: &str) -> (SyntaxTree, Vec<ParseError>) {
+    let tokens = lex(input);
     let mut p = Parser::new(tokens);
     workout(&mut p);
 
-    p.build_tree()
+    p.build_tree(input)
 }
 
 impl Parser {
@@ -97,7 +98,7 @@ impl Parser {
             index: self.events.len(),
         };
         self.events.push(Event::Open {
-            kind: TreeKind::Error,
+            kind: NodeKind::Error,
         });
         mark
     }
@@ -109,13 +110,13 @@ impl Parser {
         self.events.insert(
             m.index,
             Event::Open {
-                kind: TreeKind::Error,
+                kind: NodeKind::Error,
             },
         );
         mark
     }
 
-    fn close(&mut self, m: MarkOpened, kind: TreeKind) -> MarkClosed {
+    fn close(&mut self, m: MarkOpened, kind: NodeKind) -> MarkClosed {
         self.events[m.index] = Event::Open { kind };
         self.events.push(Event::Close);
         MarkClosed { index: m.index }
@@ -189,7 +190,7 @@ impl Parser {
         while !self.at_any(skip_till) && !self.eof() {
             self.advance();
         }
-        self.close(m, TreeKind::Error);
+        self.close(m, NodeKind::Error);
 
         false
     }
@@ -214,7 +215,7 @@ impl Parser {
             .push(ParseError::custom(self.pos, format!("{error}")));
         self.advance();
 
-        self.close(m, TreeKind::Error);
+        self.close(m, NodeKind::Error);
     }
 
     const WHITESPACE: TokenSet = TokenSet::from_array([TokenKind::Space, TokenKind::Newline]);
@@ -225,41 +226,33 @@ impl Parser {
         }
     }
 
-    fn build_tree(self) -> (Tree, Vec<ParseError>) {
+    fn build_tree(self, input: &str) -> (SyntaxTree, Vec<ParseError>) {
         let mut tokens = self.tokens.into_iter();
         let mut events = self.events;
-        let mut stack = Vec::new();
         let errors = self.errors;
 
-        // pop the last 'Close' event to ensure that the stack is non-empty in loop
-        assert!(matches!(events.pop(), Some(Event::Close)));
-
+        let mut builder = SyntaxBuilder::new(input);
         for event in events {
             match event {
                 // Starting new node; just push empty tree to stack
                 Event::Open { kind } => {
-                    stack.push(Tree {
-                        kind,
-                        children: Vec::new(),
-                    });
+                    builder.start_node(kind);
                 }
                 // tree is done; pop it off the stack and append to new current tree
                 Event::Close => {
-                    let tree = stack.pop().unwrap();
-                    stack.last_mut().unwrap().children.push(Child::Tree(tree));
+                    builder.finish_node();
                 }
                 // consume token and append to current tree
                 Event::Advance => {
                     let token = tokens.next().unwrap();
-                    stack.last_mut().unwrap().children.push(Child::Token(token));
+                    builder.add_token(token.kind, token.range);
                 }
             }
         }
 
-        assert!(stack.len() == 1);
         assert!(tokens.next().is_none());
 
-        (stack.pop().unwrap(), errors)
+        (builder.finish(), errors)
     }
 }
 
@@ -276,7 +269,7 @@ fn workout(p: &mut Parser) {
         }
     }
 
-    p.close(m, TreeKind::Workout);
+    p.close(m, NodeKind::Workout);
 }
 
 const SET_FIRST: TokenSet = WEIGHT_FIRST.with_kind(TokenKind::X);
@@ -289,7 +282,7 @@ fn set_group(p: &mut Parser) {
     p.expect(TokenKind::Hash);
     p.eat(TokenKind::Space);
     p.expect(TokenKind::Ident);
-    p.close(e, TreeKind::Exercise);
+    p.close(e, NodeKind::Exercise);
 
     p.eat(TokenKind::Space);
     p.expect(TokenKind::Newline);
@@ -308,7 +301,7 @@ fn set_group(p: &mut Parser) {
         }
     }
 
-    p.close(m, TreeKind::SetGroup);
+    p.close(m, NodeKind::SetGroup);
 }
 
 const WEIGHT_FIRST: TokenSet =
@@ -357,7 +350,7 @@ fn set(p: &mut Parser) {
     // consume trailing spaces
     p.eat(TokenKind::Space);
 
-    p.close(m, TreeKind::Set);
+    p.close(m, NodeKind::Set);
 }
 
 fn weight(p: &mut Parser) {
@@ -373,7 +366,7 @@ fn weight(p: &mut Parser) {
         p.expect_any(WEIGHT_FIRST);
     }
 
-    p.close(m, TreeKind::Weight);
+    p.close(m, NodeKind::Weight);
 }
 
 const SIMPLE_DURATION_UNIT: TokenSet =
@@ -384,7 +377,7 @@ const REP_RECOVERY: TokenSet = TokenSet::from_array([TokenKind::Newline, TokenKi
 fn quantity(p: &mut Parser) {
     assert!(p.at_any(QUANTITY_FIRST));
     let m = p.open();
-    let mut typ = TreeKind::Reps;
+    let mut typ = NodeKind::Reps;
 
     if p.at(TokenKind::X) {
         // rep prefix
@@ -397,11 +390,11 @@ fn quantity(p: &mut Parser) {
         if p.at(TokenKind::X) {
             p.eat(TokenKind::X);
         } else if p.at_any(SIMPLE_DURATION_UNIT) {
-            typ = TreeKind::SimpleDuration;
+            typ = NodeKind::SimpleDuration;
             p.eat_any(SIMPLE_DURATION_UNIT);
         } else if p.at(TokenKind::Colon) {
             // seconds or minutes
-            typ = TreeKind::LongDuration;
+            typ = NodeKind::LongDuration;
             p.eat(TokenKind::Colon);
             p.expect(TokenKind::Integer);
 
@@ -418,10 +411,22 @@ fn quantity(p: &mut Parser) {
 
 #[cfg(test)]
 mod tests {
-    use crate::ast::walker::PlainPrinter;
-    use crate::lexer::lex;
+    use std::fmt::Debug;
+
+    use crate::ast::walker::{CstPrinter, PlainPrinter, SyntaxNodeExt};
 
     use super::*;
+
+    struct SourceTree<'t> {
+        tree: &'t SyntaxTree,
+    }
+
+    impl<'i> Debug for SourceTree<'i> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let mut cst_printer = CstPrinter::new(f);
+            self.tree.root().walk(&mut cst_printer, self.tree)
+        }
+    }
 
     macro_rules! parse_snapshot {
         ($input:expr) => {{
@@ -429,22 +434,20 @@ mod tests {
         }};
 
         ($input:expr, $errors:expr) => {{
-            let tokens = lex($input);
-            eprintln!("{tokens:?}");
-
-            let (tree, errors) = parse(tokens);
+            let (tree, errors) = parse($input);
+            let root = tree.root();
 
             // make sure print to same as input
             let mut printer = PlainPrinter::default();
-            tree.walk(&mut printer, $input).unwrap();
+            root.walk(&mut printer, &tree).unwrap();
             assert_eq!($input, printer.take());
 
-            let source_tree = crate::ast::SourceTree::new($input, &tree);
+            let source_tree = SourceTree { tree: &tree };
             insta::with_settings!({
                 description => $input,
                 omit_expression => true
             }, {
-                insta::assert_debug_snapshot!(source_tree);
+                insta::assert_debug_snapshot!(source_tree)
             });
             assert_eq!(errors, $errors);
         }};

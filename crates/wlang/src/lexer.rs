@@ -1,7 +1,7 @@
-use logos::{Lexer, Logos, Source};
-use text_size::{TextRange, TextSize};
+use std::fmt::Display;
 
-use crate::ast::Token;
+use eventree::{TextRange, TextSize};
+use logos::{Lexer, Logos, Source};
 
 pub fn lex(input: &str) -> Vec<Token> {
     let mut lexer = TokenKind::lexer(input);
@@ -10,7 +10,7 @@ pub fn lex(input: &str) -> Vec<Token> {
         let span = lexer.span();
         tokens.push(Token {
             kind: kind.unwrap_or(TokenKind::Error),
-            span: TextRange::new(
+            range: TextRange::new(
                 TextSize::new(span.start as u32),
                 TextSize::new(span.end as u32),
             ),
@@ -18,6 +18,18 @@ pub fn lex(input: &str) -> Vec<Token> {
     }
 
     tokens
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Token {
+    pub kind: TokenKind,
+    pub range: TextRange,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?} {:?}", self.kind, self.range)
+    }
 }
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq, Hash)]

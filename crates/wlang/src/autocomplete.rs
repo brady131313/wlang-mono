@@ -1,7 +1,4 @@
-use crate::{
-    ast::{walker::TreeWalker, Token},
-    lexer::TokenKind,
-};
+use crate::{ast::walker::TreeWalker, lexer::TokenKind};
 
 pub struct SemanticTokenCollector {
     tokens: Vec<String>,
@@ -10,19 +7,31 @@ pub struct SemanticTokenCollector {
 impl TreeWalker for SemanticTokenCollector {
     type Err = ();
 
-    fn token(&mut self, token: &Token, source: &str) -> Result<(), Self::Err> {
-        if token.kind == TokenKind::Ident {
-            self.tokens.push(source[token.span].to_string())
+    fn token(
+        &mut self,
+        token: &crate::ast::SyntaxToken,
+        tree: &crate::ast::SyntaxTree,
+    ) -> Result<(), Self::Err> {
+        if token.kind(tree) == TokenKind::Ident {
+            self.tokens.push(token.text(tree).to_string())
         }
 
         Ok(())
     }
 
-    fn start_tree(&mut self, _kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
+    fn start_tree(
+        &mut self,
+        node: &crate::ast::SyntaxNode,
+        tree: &crate::ast::SyntaxTree,
+    ) -> Result<(), Self::Err> {
         Ok(())
     }
 
-    fn end_tree(&mut self, _kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
+    fn end_tree(
+        &mut self,
+        node: &crate::ast::SyntaxNode,
+        tree: &crate::ast::SyntaxTree,
+    ) -> Result<(), Self::Err> {
         Ok(())
     }
 }

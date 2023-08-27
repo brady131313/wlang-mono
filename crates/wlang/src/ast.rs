@@ -1,14 +1,13 @@
-use text_size::TextRange;
+use eventree::TextRange;
 
 use crate::lexer::TokenKind;
-use std::fmt::{Debug, Display};
-
-use self::walker::TreeWalker;
+use std::fmt::Debug;
 
 pub mod walker;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TreeKind {
+#[repr(u8)]
+pub enum NodeKind {
     Error,
     Workout,
     Exercise,
@@ -20,80 +19,75 @@ pub enum TreeKind {
     LongDuration,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub span: TextRange,
-}
+unsafe impl eventree::SyntaxKind for NodeKind {
+    fn to_raw(self) -> u16 {
+        self as u16
+    }
 
-impl Display for Token {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?} {:?}", self.kind, self.span)
+    unsafe fn from_raw(raw: u16) -> Self {
+        std::mem::transmute(raw as u8)
     }
 }
 
-pub struct Tree {
-    pub kind: TreeKind,
-    pub children: Vec<Child>,
-}
+unsafe impl eventree::SyntaxKind for TokenKind {
+    fn to_raw(self) -> u16 {
+        self as u16
+    }
 
-pub struct SourceTree<'i> {
-    source: &'i str,
-    tree: &'i Tree,
-}
-
-impl<'i> SourceTree<'i> {
-    pub fn new(source: &'i str, tree: &'i Tree) -> Self {
-        Self { source, tree }
+    unsafe fn from_raw(raw: u16) -> Self {
+        std::mem::transmute(raw as u8)
     }
 }
 
-pub enum Child {
-    Token(Token),
-    Tree(Tree),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum TreeConfig {}
+
+impl eventree::TreeConfig for TreeConfig {
+    type NodeKind = NodeKind;
+
+    type TokenKind = TokenKind;
 }
 
-impl Child {
-    fn into_token(&self) -> Option<&Token> {
-        if let Self::Token(token) = self {
-            Some(token)
-        } else {
-            None
-        }
-    }
+pub type SyntaxNode = eventree::SyntaxNode<TreeConfig>;
+pub type SyntaxToken = eventree::SyntaxToken<TreeConfig>;
+pub type SyntaxTree = eventree::SyntaxTree<TreeConfig>;
+pub type SyntaxBuilder = eventree::SyntaxBuilder<TreeConfig>;
 
-    fn into_tree(&self) -> Option<&Tree> {
-        if let Self::Tree(tree) = self {
-            Some(tree)
-        } else {
-            None
-        }
-    }
+pub trait AstNode: Sized {
+    fn cast(node: SyntaxNode, tree: &SyntaxTree) -> Option<Self>;
+
+    fn range(&self, tree: &SyntaxTree) -> TextRange;
+
+    fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str;
 }
 
-pub trait AstTree<'i>: Sized {
-    fn cast(tree: &'i Tree) -> Option<Self>;
+pub trait AstToken: Sized {
+    fn cast(token: SyntaxToken, tree: &SyntaxTree) -> Option<Self>;
+
+    fn range(&self, tree: &SyntaxTree) -> TextRange;
+
+    fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str;
 }
 
-pub trait AstToken<'i>: Sized {
-    fn cast(token: &'i Token) -> Option<Self>;
-
-    fn text<'s>(&self, source: &'s str) -> &'s str;
-
-    fn span(&self) -> TextRange;
-}
-
-macro_rules! impl_ast_tree {
+macro_rules! impl_ast_node {
     ($enum_name:ident::$variant:ident) => {
-        pub struct $variant<'i>(&'i Tree);
+        pub struct $variant(SyntaxNode);
 
-        impl<'i> AstTree<'i> for $variant<'i> {
-            fn cast(tree: &'i Tree) -> Option<Self> {
-                if tree.kind == $enum_name::$variant {
-                    Some(Self(tree))
+        impl AstNode for $variant {
+            fn cast(node: SyntaxNode, tree: &SyntaxTree) -> Option<Self> {
+                if node.kind(tree) == $enum_name::$variant {
+                    Some(Self(node))
                 } else {
                     None
                 }
+            }
+
+            fn range(&self, tree: &SyntaxTree) -> TextRange {
+                self.0.range(tree)
+            }
+
+            fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str {
+                self.0.text(tree)
             }
         }
     };
@@ -101,190 +95,207 @@ macro_rules! impl_ast_tree {
 
 macro_rules! impl_ast_token {
     ($enum_name:ident::$variant:ident) => {
-        pub struct $variant<'i>(&'i Token);
+        pub struct $variant(SyntaxToken);
 
-        impl<'i> AstToken<'i> for $variant<'i> {
-            fn cast(token: &'i Token) -> Option<Self> {
-                if token.kind == $enum_name::$variant {
+        impl AstToken for $variant {
+            fn cast(token: SyntaxToken, tree: &SyntaxTree) -> Option<Self> {
+                if token.kind(tree) == $enum_name::$variant {
                     Some(Self(token))
                 } else {
                     None
                 }
             }
 
-            fn text<'s>(&self, source: &'s str) -> &'s str {
-                &source[self.span()]
+            fn range(&self, tree: &SyntaxTree) -> TextRange {
+                self.0.range(tree)
             }
 
-            fn span(&self) -> TextRange {
-                self.0.span
+            fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str {
+                self.0.text(tree)
             }
         }
     };
 }
 
-fn child_trees<'i, A: AstTree<'i> + 'i>(tree: &'i Tree) -> impl Iterator<Item = A> + 'i {
-    tree.children
-        .iter()
-        .filter_map(Child::into_tree)
-        .filter_map(A::cast)
+fn child_nodes<'t, A: AstNode>(
+    node: &SyntaxNode,
+    tree: &'t SyntaxTree,
+) -> impl Iterator<Item = A> + 't {
+    node.child_nodes(tree).filter_map(|n| A::cast(n, tree))
 }
 
-fn find_child_tree<'i, A: AstTree<'i> + 'i>(tree: &'i Tree) -> Option<A> {
-    child_trees(tree).next()
+fn find_child_node<A: AstNode>(node: &SyntaxNode, tree: &SyntaxTree) -> Option<A> {
+    child_nodes(node, tree).next()
 }
 
-fn child_tokens<'i, A: AstToken<'i> + 'i>(tree: &'i Tree) -> impl Iterator<Item = A> + 'i {
-    tree.children
-        .iter()
-        .filter_map(Child::into_token)
-        .filter_map(A::cast)
+fn child_tokens<'t, A: AstToken>(
+    node: &SyntaxNode,
+    tree: &'t SyntaxTree,
+) -> impl Iterator<Item = A> + 't {
+    node.child_tokens(tree).filter_map(|t| A::cast(t, tree))
 }
 
-fn find_child_token<'i, A: AstToken<'i> + 'i>(tree: &'i Tree) -> Option<A> {
-    child_tokens(tree).next()
+fn find_child_token<A: AstToken>(node: &SyntaxNode, tree: &SyntaxTree) -> Option<A> {
+    child_tokens(node, tree).next()
 }
 
-impl_ast_tree!(TreeKind::Workout);
+impl_ast_node!(NodeKind::Workout);
 
-impl<'i> Workout<'i> {
-    pub fn set_groups(&self) -> impl Iterator<Item = SetGroup> {
-        child_trees(self.0)
-    }
-
-    pub fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
-        self.0.walk(walker, source)
+impl Workout {
+    pub fn set_groups<'t>(&self, tree: &'t SyntaxTree) -> impl Iterator<Item = SetGroup> + 't {
+        child_nodes(&self.0, tree)
     }
 }
 
-impl_ast_tree!(TreeKind::SetGroup);
+//     pub fn walk<W: TreeWalker>(&self, walker: &mut W, source: &str) -> Result<(), W::Err> {
+//         self.0.walk(walker, source)
+//     }
+// }
 
-impl<'i> SetGroup<'i> {
-    pub fn exercise(&self) -> Option<Exercise> {
-        find_child_tree(self.0)
+impl_ast_node!(NodeKind::SetGroup);
+
+impl SetGroup {
+    pub fn exercise(&self, tree: &SyntaxTree) -> Option<Exercise> {
+        find_child_node(&self.0, tree)
     }
 
-    pub fn sets(&self) -> impl Iterator<Item = Set> {
-        child_trees(self.0)
-    }
-}
-
-impl_ast_tree!(TreeKind::Exercise);
-
-impl<'i> Exercise<'i> {
-    pub fn ident(&self) -> Option<Ident> {
-        find_child_token(self.0)
+    pub fn sets<'t>(&self, tree: &'t SyntaxTree) -> impl Iterator<Item = Set> + 't {
+        child_nodes(&self.0, tree)
     }
 }
 
-impl_ast_tree!(TreeKind::Set);
+impl_ast_node!(NodeKind::Exercise);
 
-impl<'i> Set<'i> {
-    pub fn weight(&self) -> Option<Weight> {
-        find_child_tree(self.0)
-    }
-
-    pub fn quantity(&self) -> Option<Quantity> {
-        find_child_tree(self.0)
+impl Exercise {
+    pub fn ident(&self, tree: &SyntaxTree) -> Option<Ident> {
+        find_child_token(&self.0, tree)
     }
 }
 
-impl_ast_tree!(TreeKind::Weight);
+impl_ast_node!(NodeKind::Set);
 
-impl<'i> Weight<'i> {
-    pub fn weight(&self) -> Option<WeightLiteral> {
-        find_child_token(self.0)
+impl Set {
+    pub fn weight(&self, tree: &SyntaxTree) -> Option<Weight> {
+        find_child_node(&self.0, tree)
     }
 
-    pub fn bodyweight(&self) -> Option<Bodyweight> {
-        find_child_token(self.0)
+    pub fn quantity(&self, tree: &SyntaxTree) -> Option<Quantity> {
+        find_child_node(&self.0, tree)
     }
 }
 
-pub enum WeightLiteral<'i> {
-    Float(Float<'i>),
-    Integer(Integer<'i>),
+impl_ast_node!(NodeKind::Weight);
+
+impl Weight {
+    pub fn weight(&self, tree: &SyntaxTree) -> Option<WeightLiteral> {
+        find_child_token(&self.0, tree)
+    }
+
+    pub fn bodyweight(&self, tree: &SyntaxTree) -> Option<Bodyweight> {
+        find_child_token(&self.0, tree)
+    }
 }
 
-impl<'i> WeightLiteral<'i> {
-    pub fn parse(&self, source: &str) -> f64 {
+pub enum WeightLiteral {
+    Float(Float),
+    Integer(Integer),
+}
+
+impl WeightLiteral {
+    pub fn parse(&self, tree: &SyntaxTree) -> f64 {
         match self {
-            WeightLiteral::Float(float) => float.parse(source),
-            WeightLiteral::Integer(int) => int.parse(source) as f64,
+            WeightLiteral::Float(float) => float.parse(tree),
+            WeightLiteral::Integer(int) => int.parse(tree) as f64,
         }
     }
 }
 
-impl<'i> AstToken<'i> for WeightLiteral<'i> {
-    fn cast(token: &'i Token) -> Option<Self> {
-        match token.kind {
+impl AstToken for WeightLiteral {
+    fn cast(token: SyntaxToken, tree: &SyntaxTree) -> Option<Self> {
+        match token.kind(tree) {
             TokenKind::Float => Some(Self::Float(Float(token))),
             TokenKind::Integer => Some(Self::Integer(Integer(token))),
             _ => None,
         }
     }
 
-    fn text<'s>(&self, source: &'s str) -> &'s str {
+    fn range(&self, tree: &SyntaxTree) -> TextRange {
         match self {
-            WeightLiteral::Float(float) => float.text(source),
-            WeightLiteral::Integer(integer) => integer.text(source),
+            WeightLiteral::Float(float) => float.range(tree),
+            WeightLiteral::Integer(integer) => integer.range(tree),
         }
     }
 
-    fn span(&self) -> TextRange {
+    fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str {
         match self {
-            WeightLiteral::Float(float) => float.span(),
-            WeightLiteral::Integer(integer) => integer.span(),
+            WeightLiteral::Float(float) => float.text(tree),
+            WeightLiteral::Integer(integer) => integer.text(tree),
         }
     }
 }
 
-pub enum Quantity<'i> {
-    Reps(Reps<'i>),
-    SimpleDuration(SimpleDuration<'i>),
-    LongDuration(LongDuration<'i>),
+pub enum Quantity {
+    Reps(Reps),
+    SimpleDuration(SimpleDuration),
+    LongDuration(LongDuration),
 }
 
-impl<'i> AstTree<'i> for Quantity<'i> {
-    fn cast(tree: &'i Tree) -> Option<Self> {
-        match tree.kind {
-            TreeKind::Reps => Some(Self::Reps(Reps(tree))),
-            TreeKind::SimpleDuration => Some(Self::SimpleDuration(SimpleDuration(tree))),
-            TreeKind::LongDuration => Some(Self::LongDuration(LongDuration(tree))),
+impl AstNode for Quantity {
+    fn cast(node: SyntaxNode, tree: &SyntaxTree) -> Option<Self> {
+        match node.kind(tree) {
+            NodeKind::Reps => Some(Self::Reps(Reps(node))),
+            NodeKind::SimpleDuration => Some(Self::SimpleDuration(SimpleDuration(node))),
+            NodeKind::LongDuration => Some(Self::LongDuration(LongDuration(node))),
             _ => None,
         }
     }
-}
 
-impl_ast_tree!(TreeKind::Reps);
+    fn range(&self, tree: &SyntaxTree) -> TextRange {
+        match self {
+            Quantity::Reps(reps) => reps.range(tree),
+            Quantity::SimpleDuration(simple) => simple.range(tree),
+            Quantity::LongDuration(long) => long.range(tree),
+        }
+    }
 
-impl<'i> Reps<'i> {
-    pub fn amount(&self) -> Option<Integer> {
-        find_child_token(self.0)
+    fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str {
+        match self {
+            Quantity::Reps(reps) => reps.text(tree),
+            Quantity::SimpleDuration(simple) => simple.text(tree),
+            Quantity::LongDuration(long) => long.text(tree),
+        }
     }
 }
 
-impl_ast_tree!(TreeKind::SimpleDuration);
+impl_ast_node!(NodeKind::Reps);
 
-impl<'i> SimpleDuration<'i> {
-    pub fn duration(&self) -> Option<Integer> {
-        find_child_token(self.0)
-    }
-
-    pub fn unit(&self) -> Option<TimeUnit> {
-        find_child_token(self.0)
+impl Reps {
+    pub fn amount(&self, tree: &SyntaxTree) -> Option<Integer> {
+        find_child_token(&self.0, tree)
     }
 }
 
-pub enum TimeUnit<'i> {
-    Hour(Hour<'i>),
-    Minute(Minute<'i>),
-    Second(Second<'i>),
+impl_ast_node!(NodeKind::SimpleDuration);
+
+impl SimpleDuration {
+    pub fn duration(&self, tree: &SyntaxTree) -> Option<Integer> {
+        find_child_token(&self.0, tree)
+    }
+
+    pub fn unit(&self, tree: &SyntaxTree) -> Option<TimeUnit> {
+        find_child_token(&self.0, tree)
+    }
 }
 
-impl<'i> AstToken<'i> for TimeUnit<'i> {
-    fn cast(token: &'i Token) -> Option<Self> {
-        match token.kind {
+pub enum TimeUnit {
+    Hour(Hour),
+    Minute(Minute),
+    Second(Second),
+}
+
+impl AstToken for TimeUnit {
+    fn cast(token: SyntaxToken, tree: &SyntaxTree) -> Option<Self> {
+        match token.kind(tree) {
             TokenKind::Hour => Some(Self::Hour(Hour(token))),
             TokenKind::Minute => Some(Self::Minute(Minute(token))),
             TokenKind::Second => Some(Self::Second(Second(token))),
@@ -292,19 +303,19 @@ impl<'i> AstToken<'i> for TimeUnit<'i> {
         }
     }
 
-    fn text<'s>(&self, source: &'s str) -> &'s str {
+    fn range(&self, tree: &SyntaxTree) -> TextRange {
         match self {
-            TimeUnit::Hour(hour) => hour.text(source),
-            TimeUnit::Minute(minute) => minute.text(source),
-            TimeUnit::Second(second) => second.text(source),
+            TimeUnit::Hour(hour) => hour.range(tree),
+            TimeUnit::Minute(minute) => minute.range(tree),
+            TimeUnit::Second(second) => second.range(tree),
         }
     }
 
-    fn span(&self) -> TextRange {
+    fn text<'t>(&self, tree: &'t SyntaxTree) -> &'t str {
         match self {
-            TimeUnit::Hour(hour) => hour.span(),
-            TimeUnit::Minute(minute) => minute.span(),
-            TimeUnit::Second(second) => second.span(),
+            TimeUnit::Hour(hour) => hour.text(tree),
+            TimeUnit::Minute(minute) => minute.text(tree),
+            TimeUnit::Second(second) => second.text(tree),
         }
     }
 }
@@ -313,34 +324,35 @@ impl_ast_token!(TokenKind::Hour);
 impl_ast_token!(TokenKind::Minute);
 impl_ast_token!(TokenKind::Second);
 
-impl_ast_tree!(TreeKind::LongDuration);
+impl_ast_node!(NodeKind::LongDuration);
 
-impl<'i> LongDuration<'i> {
+impl LongDuration {
     fn has_hour_comp(&self) -> bool {
-        self.0.children.len() >= 4
+        // self.0.children.len() >= 4
+        todo!()
     }
 
-    pub fn hour(&self) -> Option<Integer> {
+    pub fn hour(&self, tree: &SyntaxTree) -> Option<Integer> {
         if self.has_hour_comp() {
-            find_child_token(self.0)
+            find_child_token(&self.0, tree)
         } else {
             None
         }
     }
 
-    pub fn minute(&self) -> Option<Integer> {
+    pub fn minute(&self, tree: &SyntaxTree) -> Option<Integer> {
         if self.has_hour_comp() {
-            child_tokens(self.0).nth(1)
+            child_tokens(&self.0, tree).nth(1)
         } else {
-            find_child_token(self.0)
+            find_child_token(&self.0, tree)
         }
     }
 
-    pub fn second(&self) -> Option<Integer> {
+    pub fn second(&self, tree: &SyntaxTree) -> Option<Integer> {
         if self.has_hour_comp() {
-            child_tokens(self.0).nth(2)
+            child_tokens(&self.0, tree).nth(2)
         } else {
-            child_tokens(self.0).nth(1)
+            child_tokens(&self.0, tree).nth(1)
         }
     }
 }
@@ -350,16 +362,16 @@ impl_ast_token!(TokenKind::Ident);
 
 impl_ast_token!(TokenKind::Float);
 
-impl<'i> Float<'i> {
-    pub fn parse(&self, source: &str) -> f64 {
-        self.text(source).parse().unwrap()
+impl Float {
+    pub fn parse(&self, tree: &SyntaxTree) -> f64 {
+        self.text(tree).parse().unwrap()
     }
 }
 
 impl_ast_token!(TokenKind::Integer);
 
-impl<'i> Integer<'i> {
-    pub fn parse(&self, source: &str) -> usize {
-        self.text(source).parse().unwrap()
+impl Integer {
+    pub fn parse(&self, tree: &SyntaxTree) -> usize {
+        self.text(tree).parse().unwrap()
     }
 }

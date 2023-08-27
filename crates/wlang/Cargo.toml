@@ -8,13 +8,12 @@ edition = "2021"
 
 [dependencies]
 logos = "0.13.0"
-text-size = "1.1.1"
 
 serde = { version = "1.0.183", features = ["derive"], optional = true }
+eventree = "0.6.2"
 
 [features]
 serde = ["dep:serde"]
 
 [dev-dependencies]
 insta = { version = "1.31.0" }
-

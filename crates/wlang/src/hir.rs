@@ -1,4 +1,4 @@
-use crate::ast::{self, AstToken};
+use crate::ast::{self, AstToken, SyntaxTree};
 
 #[derive(Debug)]
 pub struct Workout {
@@ -32,41 +32,41 @@ pub enum Quantity {
 }
 
 impl Workout {
-    pub fn lower(ast: ast::Workout, source: &str) -> Self {
+    pub fn lower(ast: ast::Workout, tree: &SyntaxTree) -> Self {
         let set_groups = ast
-            .set_groups()
-            .map(|sg| SetGroup::lower(sg, source))
+            .set_groups(tree)
+            .map(|sg| SetGroup::lower(sg, tree))
             .collect();
         Self { set_groups }
     }
 }
 
 impl SetGroup {
-    fn lower(ast: ast::SetGroup, source: &str) -> Self {
+    fn lower(ast: ast::SetGroup, tree: &SyntaxTree) -> Self {
         let exercise = ast
-            .exercise()
-            .and_then(|e| e.ident().map(|i| i.text(source).to_string()));
+            .exercise(tree)
+            .and_then(|e| e.ident(tree).map(|i| i.text(tree).to_string()));
 
-        let sets = ast.sets().map(|s| Set::lower(s, source)).collect();
+        let sets = ast.sets(tree).map(|s| Set::lower(s, tree)).collect();
 
         Self { exercise, sets }
     }
 }
 
 impl Set {
-    fn lower(ast: ast::Set, source: &str) -> Self {
-        let weight = ast.weight().map(|w| Weight::lower(w, source));
-        let quantity = ast.quantity().map(|q| Quantity::lower(q, source));
+    fn lower(ast: ast::Set, tree: &SyntaxTree) -> Self {
+        let weight = ast.weight(tree).map(|w| Weight::lower(w, tree));
+        let quantity = ast.quantity(tree).map(|q| Quantity::lower(q, tree));
 
         Self { weight, quantity }
     }
 }
 
 impl Weight {
-    fn lower(ast: ast::Weight, source: &str) -> Self {
-        match (ast.weight(), ast.bodyweight()) {
-            (Some(weight), Some(_bw)) => Self::Bodyweight(Some(weight.parse(source))),
-            (Some(weight), None) => Self::Straight(weight.parse(source)),
+    fn lower(ast: ast::Weight, tree: &SyntaxTree) -> Self {
+        match (ast.weight(tree), ast.bodyweight(tree)) {
+            (Some(weight), Some(_bw)) => Self::Bodyweight(Some(weight.parse(tree))),
+            (Some(weight), None) => Self::Straight(weight.parse(tree)),
             (None, Some(_bw)) => Self::Bodyweight(None),
             _ => Self::Error,
         }
@@ -74,27 +74,29 @@ impl Weight {
 }
 
 impl Quantity {
-    fn lower(ast: ast::Quantity, source: &str) -> Self {
+    fn lower(ast: ast::Quantity, tree: &SyntaxTree) -> Self {
         match ast {
-            ast::Quantity::Reps(reps) => Self::lower_reps(reps, source),
-            ast::Quantity::SimpleDuration(simple) => Self::lower_simple_duration(simple, source),
-            ast::Quantity::LongDuration(long) => Self::lower_long_duration(long, source),
+            ast::Quantity::Reps(reps) => Self::lower_reps(reps, tree),
+            ast::Quantity::SimpleDuration(simple) => Self::lower_simple_duration(simple, tree),
+            ast::Quantity::LongDuration(long) => Self::lower_long_duration(long, tree),
         }
     }
 
-    fn lower_reps(reps: ast::Reps, source: &str) -> Self {
-        if let Some(amount) = reps.amount().map(|i| i.parse(source)) {
+    fn lower_reps(reps: ast::Reps, tree: &SyntaxTree) -> Self {
+        if let Some(amount) = reps.amount(tree).map(|i| i.parse(tree)) {
             Self::Reps(amount)
         } else {
             Self::Error
         }
     }
 
-    fn lower_simple_duration(simple: ast::SimpleDuration, source: &str) -> Self {
-        let Some(duration) = simple.duration().map(|i| i.parse(source)) else { return Self::Error };
+    fn lower_simple_duration(simple: ast::SimpleDuration, tree: &SyntaxTree) -> Self {
+        let Some(duration) = simple.duration(tree).map(|i| i.parse(tree)) else {
+            return Self::Error;
+        };
 
         let multiplier = simple
-            .unit()
+            .unit(tree)
             .map(|unit| match unit {
                 ast::TimeUnit::Hour(_) => 3600,
                 ast::TimeUnit::Minute(_) => 60,
@@ -105,10 +107,10 @@ impl Quantity {
         Self::Duration(duration * multiplier)
     }
 
-    fn lower_long_duration(long: ast::LongDuration, source: &str) -> Self {
-        let hour = long.hour().map(|h| h.parse(source)).unwrap_or(0);
-        let minute = long.minute().map(|m| m.parse(source)).unwrap_or(0);
-        let second = long.second().map(|s| s.parse(source)).unwrap_or(0);
+    fn lower_long_duration(long: ast::LongDuration, tree: &SyntaxTree) -> Self {
+        let hour = long.hour(tree).map(|h| h.parse(tree)).unwrap_or(0);
+        let minute = long.minute(tree).map(|m| m.parse(tree)).unwrap_or(0);
+        let second = long.second(tree).map(|s| s.parse(tree)).unwrap_or(0);
 
         let duration = (hour * 3600) + (minute * 60) + second;
         Self::Duration(duration)
