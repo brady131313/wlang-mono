@@ -423,6 +423,8 @@ mod tests {
         }};
 
         ($input:expr, $errors:expr) => {{
+            let tokens = crate::lexer::lex($input);
+            eprintln!("{tokens:#?}");
             let (tree, errors) = parse($input);
             let root = tree.root();
 
@@ -548,8 +550,13 @@ bw x3"
     fn workout_invalid_rep() {
         parse_snapshot!(
             "#Bench Press\n225 xbench",
-            [ParseError::expected(6, TokenKind::Integer)]
+            [ParseError::custom(5, String::from("expected quantity"))]
         );
+    }
+
+    #[test]
+    fn workout_exercise_start_ambigious() {
+        parse_snapshot!("# Squat", [ParseError::expected(3, TokenKind::Newline)]);
     }
 
     #[test]
@@ -559,13 +566,12 @@ bw x3"
 
     #[test]
     fn fuzz_case() {
+        let input = "# Bess\0\0\0\n255 x;2\n \n257x8\n# Pull Up3\nBWxs x88";
         parse_snapshot!(
-            "# Bess\0\0\0\n255 x;2\n \n257x8\n# Pull Up3\nBWxs x88",
+            input,
             [
                 ParseError::expected(7, TokenKind::Integer),
-                ParseError::custom(20, String::from("expected set")),
-                ParseError::expected(21, TokenKind::Newline),
-                ParseError::expected(22, TokenKind::Integer),
+                ParseError::custom(21, String::from("expected quantity")),
             ]
         );
     }

@@ -65,6 +65,7 @@ pub enum TokenKind {
     Newline,
     #[regex("[ \t]+")]
     Space,
+    #[regex("[hHmMsSxD][a-zA-Z]", ident)]
     #[regex("[a-zA-Z]", ident)]
     Ident,
 
@@ -205,6 +206,12 @@ bw 30s
         assert_eq!(lex_kind("Bench Press"), [Ident]);
         assert_eq!(lex_kind("Bench    Press"), [Ident]);
         assert_eq!(lex_kind("Bench    Press    "), [Ident, Space]);
+    }
+
+    #[test]
+    fn lex_ident_starting_with_keyword() {
+        assert_eq!(lex_kind("Squat"), [Ident]);
+        assert_eq!(lex_kind("# Squat"), [Hash, Space, Ident])
     }
 
     #[test]

@@ -9,17 +9,17 @@ const GridItem: React.FC<
 > = (
   { title, content, children },
 ) => (
-  <div className="flex flex-col gap-y-3">
-    <h1 className="text-2xl font-bold tracking-wide">{title}</h1>
-    {!children
-      ? (
-        <div className={`${BORDER_CLASS} overflow-y-auto`}>
-          <p className="whitespace-pre">{content}</p>
-        </div>
-      )
-      : children}
-  </div>
-);
+    <div className="flex flex-col gap-y-3">
+      <h1 className="text-2xl font-bold tracking-wide">{title}</h1>
+      {!children
+        ? (
+          <div className={`${BORDER_CLASS} overflow-y-auto`}>
+            <p className="whitespace-pre">{content}</p>
+          </div>
+        )
+        : children}
+    </div>
+  );
 
 function Playground() {
   const [input, setInput] = useState("");

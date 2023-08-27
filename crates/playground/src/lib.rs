@@ -1,6 +1,6 @@
 mod utils;
 
-use types::{JSParseError, JSTokenContext};
+use types::JSTokenContext;
 use wasm_bindgen::prelude::*;
 use wlang::{
     ast::{
@@ -15,6 +15,13 @@ use wlang::{
 
 pub mod types;
 
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[allow(unused)]
 macro_rules! console_log {
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
@@ -154,3 +161,8 @@ impl WorkoutHir {
         format!("{:#?}", self.0)
     }
 }
+
+// #[wasm_bindgen(start)]
+// pub fn main() {
+//     utils::set_panic_hook()
+// }

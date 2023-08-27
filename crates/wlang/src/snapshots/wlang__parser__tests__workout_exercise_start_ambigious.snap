@@ -1,0 +1,11 @@
+---
+source: crates/wlang/src/parser.rs
+description: "# Squat"
+---
+Workout
+  SetGroup
+    Exercise
+      '#'
+      Space(1)
+      'Squat'
+

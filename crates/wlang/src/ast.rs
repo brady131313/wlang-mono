@@ -347,8 +347,7 @@ impl_ast_node!(NodeKind::LongDuration);
 
 impl LongDuration {
     fn has_hour_comp(&self) -> bool {
-        // self.0.children.len() >= 4
-        todo!()
+        false
     }
 
     pub fn hour(&self, tree: &SyntaxTree) -> Option<Integer> {

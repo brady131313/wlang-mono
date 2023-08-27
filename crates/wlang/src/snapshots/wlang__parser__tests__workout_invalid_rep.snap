@@ -12,8 +12,6 @@ Workout
       Weight
         '225'
         Space(1)
-      Reps
-        'x'
-        Error
-          'bench'
+      Error
+        'xbench'
 
