@@ -18,11 +18,11 @@ impl TreeWalker for SemanticTokenCollector {
         Ok(())
     }
 
-    fn start_tree(&mut self, kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
+    fn start_tree(&mut self, _kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
         Ok(())
     }
 
-    fn end_tree(&mut self, kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
+    fn end_tree(&mut self, _kind: crate::ast::TreeKind) -> Result<(), Self::Err> {
         Ok(())
     }
 }
