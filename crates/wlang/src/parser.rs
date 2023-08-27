@@ -544,6 +544,7 @@ bw x3"
     fn workout_long_duration() {
         parse_snapshot!("#Planks\nbw 1:30");
         parse_snapshot!("#Planks\nbw 1:30:25");
+        parse_snapshot!("#Planks\nbw 1:00:00");
     }
 
     #[test]

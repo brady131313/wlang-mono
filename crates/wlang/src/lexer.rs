@@ -43,7 +43,7 @@ pub enum TokenKind {
     #[token("+")]
     Plus,
 
-    #[regex("[1-9][0-9]*|0")]
+    #[regex("[0-9]+")]
     Integer,
     #[regex(r#"([1-9][0-9]*|0)?\.[0-9]*"#)]
     Float,
@@ -169,6 +169,7 @@ bw 30s
     fn lex_integer() {
         assert_eq!(lex_kind("1"), [Integer]);
         assert_eq!(lex_kind("123"), [Integer]);
+        assert_eq!(lex_kind("00"), [Integer]);
     }
 
     #[test]

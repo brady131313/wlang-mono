@@ -346,12 +346,12 @@ impl_ast_token!(TokenKind::Second);
 impl_ast_node!(NodeKind::LongDuration);
 
 impl LongDuration {
-    fn has_hour_comp(&self) -> bool {
-        false
+    fn has_hour_comp(&self, tree: &SyntaxTree) -> bool {
+        self.0.children(tree).count() >= 4
     }
 
     pub fn hour(&self, tree: &SyntaxTree) -> Option<Integer> {
-        if self.has_hour_comp() {
+        if self.has_hour_comp(tree) {
             find_child_token(&self.0, tree)
         } else {
             None
@@ -359,7 +359,7 @@ impl LongDuration {
     }
 
     pub fn minute(&self, tree: &SyntaxTree) -> Option<Integer> {
-        if self.has_hour_comp() {
+        if self.has_hour_comp(tree) {
             child_tokens(&self.0, tree).nth(1)
         } else {
             find_child_token(&self.0, tree)
@@ -367,7 +367,7 @@ impl LongDuration {
     }
 
     pub fn second(&self, tree: &SyntaxTree) -> Option<Integer> {
-        if self.has_hour_comp() {
+        if self.has_hour_comp(tree) {
             child_tokens(&self.0, tree).nth(2)
         } else {
             child_tokens(&self.0, tree).nth(1)

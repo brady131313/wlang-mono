@@ -1,0 +1,21 @@
+---
+source: crates/wlang/src/parser.rs
+description: "#Planks\nbw 1:00:00"
+---
+Workout
+  SetGroup
+    Exercise
+      '#'
+      'Planks'
+    Nl(1)
+    Set
+      Weight
+        'bw'
+        Space(1)
+      LongDuration
+        '1'
+        ':'
+        '00'
+        ':'
+        '00'
+
