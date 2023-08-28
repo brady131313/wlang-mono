@@ -1,5 +1,5 @@
 use eventree::TextRange;
-use radix_trie::{SubTrie, Trie, TrieCommon};
+use radix_trie::{Trie, TrieCommon};
 
 use crate::{ast::walker::TreeWalker, lexer::TokenKind};
 

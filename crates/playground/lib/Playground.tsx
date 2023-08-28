@@ -1,7 +1,6 @@
-import { WorkoutCst, WorkoutHir } from "playground/playground";
+import { WorkoutCst, WorkoutHir, JSTokenContext, JSCompletionTrie } from "playground/playground";
 import React, { useState } from "react";
 import Editor from "./Editor";
-import { JSTokenContext } from "playground";
 
 const BORDER_CLASS = "border border-gray-400 rounded-xl flex-grow p-3";
 
@@ -22,6 +21,13 @@ const GridItem: React.FC<
     </div>
   );
 
+const COMPLETION = new JSCompletionTrie()
+COMPLETION.add_exercise('DB Bench Press')
+COMPLETION.add_exercise('DB Incline Press')
+COMPLETION.add_exercise('DB Shoulder Press')
+COMPLETION.add_exercise('DB Row')
+COMPLETION.add_exercise('DB Curl')
+
 function Playground() {
   const [input, setInput] = useState("");
   const [context, setContext] = useState<JSTokenContext | null>(null);
@@ -32,19 +38,20 @@ function Playground() {
   const handleInput = (input: string, offset?: number) => {
     setInput(input);
 
-    const newCompletions = [];
-    if (input.charAt(0) == "n") {
-      newCompletions.push("nice");
-    }
-    setCompletions(newCompletions);
-
     const newCst = new WorkoutCst(input);
     setCst(newCst);
 
+    const newCompletions: string[] = [];
     if (offset) {
       const lookup = newCst.lookupOffset(offset);
       setContext(lookup || null)
+
+      if (lookup && lookup.treeKind === 'exercise') {
+        const exercise = lookup.token.kind === 'ident' ? input.substring(lookup.token.start, offset) : ""
+        console.log(COMPLETION.complete_exercise(exercise))
+      }
     }
+    setCompletions(newCompletions);
 
     const newHir = new WorkoutHir(newCst);
     setHir(newHir);
