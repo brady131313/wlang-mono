@@ -12,6 +12,8 @@ logos = "0.13.0"
 serde = { version = "1.0.183", features = ["derive"], optional = true }
 eventree = "0.6.2"
 radix_trie = "0.2.1"
+aho-corasick = "1.0.4"
+once_cell = "1.18.0"
 
 [features]
 serde = ["dep:serde"]

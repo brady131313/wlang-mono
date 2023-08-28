@@ -1,4 +1,6 @@
+use aho_corasick::AhoCorasick;
 use eventree::TextRange;
+use once_cell::sync::Lazy;
 use radix_trie::{Trie, TrieCommon};
 
 use crate::{ast::walker::TreeWalker, lexer::TokenKind};
@@ -45,12 +47,12 @@ pub enum Completion {
     Local(TextRange),
 }
 
-pub trait CompletionEntry {
-    fn entry(self) -> (String, Completion);
+pub trait CompletionEntry<'e> {
+    fn entry(self) -> (&'e str, Completion);
 }
 
-impl CompletionEntry for String {
-    fn entry(self) -> (String, Completion) {
+impl<'e> CompletionEntry<'e> for &'e str {
+    fn entry(self) -> (&'e str, Completion) {
         (self, Completion::Global)
     }
 }
@@ -61,27 +63,88 @@ pub struct CompletionTrie {
 }
 
 impl CompletionTrie {
-    pub fn insert_exercises<I, C>(&mut self, exercises: I)
+    pub fn insert_exercises<'e, I, C>(&mut self, exercises: I)
     where
         I: IntoIterator<Item = C>,
-        C: CompletionEntry,
+        C: CompletionEntry<'e>,
     {
         for exercise in exercises {
             let (exercise, completion) = exercise.entry();
-            self.exercises.insert(exercise, completion);
+            let normalized = normalize_exercise(exercise);
+            self.exercises.insert(normalized, completion);
         }
     }
 
     pub fn complete_exercise<'t>(
         &'t self,
         exercise: &str,
-    ) -> impl Iterator<Item = (&'t String, Completion)> {
+    ) -> impl Iterator<Item = (String, Completion)> + 't {
+        let normalized = normalize_exercise(exercise);
+
         self.exercises
-            .get_raw_descendant(exercise)
+            .get_raw_descendant(&normalized)
             .into_iter()
             .flat_map(|trie| trie.iter())
-            .map(|(exercise, &completion)| (exercise, completion))
+            .map(|(exercise, &completion)| (denormalize_exercise(exercise), completion))
     }
+}
+
+fn normalize_exercise(exercise: &str) -> String {
+    let mut output = String::new();
+
+    // remove ws and lowercase
+    let mut last_char_ws = false;
+    for c in exercise.chars() {
+        if c.is_whitespace() {
+            if !last_char_ws {
+                output.push('_');
+            }
+            last_char_ws = true;
+        } else if c == '-' {
+            output.push('_');
+        } else {
+            output.extend(c.to_lowercase());
+            last_char_ws = false;
+        }
+    }
+
+    // transform common prefixes
+    const REPLACEMENT: &[&str] = &["db", "sl", "sa"];
+    static AC_NORMALIZE: Lazy<AhoCorasick> = Lazy::new(|| {
+        const PATTERNS: &[&str] = &["dumbbell", "single_leg", "single_arm"];
+        AhoCorasick::new(PATTERNS).unwrap()
+    });
+
+    AC_NORMALIZE.replace_all(&output, REPLACEMENT)
+}
+
+fn denormalize_exercise(exercise: &str) -> String {
+    // transform common prefixes
+    const REPLACEMENTS: &[&str] = &["DB", "SL", "SA"];
+    static AC_DENORMALIZE: Lazy<AhoCorasick> = Lazy::new(|| {
+        const PATTERNS: &[&str] = &["db", "sl", "sa"];
+        AhoCorasick::new(PATTERNS).unwrap()
+    });
+    let replaced = AC_DENORMALIZE.replace_all(exercise, REPLACEMENTS);
+
+    // re add spaces and capitalize
+    let mut output = String::new();
+    let mut last_char_ws = true;
+    for c in replaced.chars() {
+        if c == '_' {
+            output.push(' ');
+            last_char_ws = true;
+        } else {
+            if last_char_ws {
+                output.extend(c.to_uppercase());
+            } else {
+                output.push(c);
+            }
+            last_char_ws = false;
+        }
+    }
+
+    output
 }
 
 #[cfg(test)]
@@ -89,22 +152,54 @@ mod tests {
     use super::*;
 
     #[test]
+    fn normalize_exercise_lowercases_and_removes_spaces() {
+        assert_eq!(normalize_exercise("Exercise  Here"), "exercise_here");
+        assert_eq!(normalize_exercise("Exercise-Here"), "exercise_here");
+    }
+
+    #[test]
+    fn normalize_exercise_transforms_common_abbreviations() {
+        assert_eq!(normalize_exercise("Dumbbell Bench Press"), "db_bench_press");
+
+        assert_eq!(normalize_exercise("Single Leg Squat"), "sl_squat");
+        assert_eq!(normalize_exercise("Single-Leg Squat"), "sl_squat");
+
+        assert_eq!(normalize_exercise("Single Arm Curl"), "sa_curl");
+        assert_eq!(normalize_exercise("Single-Arm Curl"), "sa_curl");
+    }
+
+    #[test]
+    fn denormalize_exercise_capitalizes_and_adds_spaces() {
+        assert_eq!(denormalize_exercise("exercise_here"), "Exercise Here")
+    }
+
+    #[test]
+    fn denormalize_exercise_transforms_common_abbreviations() {
+        assert_eq!(denormalize_exercise("sl_squat"), "SL Squat");
+        assert_eq!(denormalize_exercise("sa_curl"), "SA Curl");
+        assert_eq!(denormalize_exercise("db_row"), "DB Row");
+    }
+
+    #[test]
     fn completion_trie_exercises() {
         let mut trie = CompletionTrie::default();
         trie.insert_exercises([
-            String::from("Bench Press"),
-            String::from("Overhead Press"),
-            String::from("Pull-ups"),
-            String::from("DB Bench"),
-            String::from("DB Incline Bench"),
-            String::from("DB Row"),
-            String::from("DB Curl"),
+            "Bench Press",
+            "Overhead Press",
+            "Pull-ups",
+            "DB Bench",
+            "DB Incline Bench",
+            "DB Row",
+            "DB Curl",
         ]);
 
-        let completions: Vec<_> = trie.complete_exercise("DB").map(|(e, _)| e).collect();
+        let completions: Vec<_> = trie.complete_exercise("dumbbell").map(|(e, _)| e).collect();
+        let completions_abbr: Vec<_> = trie.complete_exercise("DB").map(|(e, _)| e).collect();
+
         assert_eq!(
             completions,
             ["DB Bench", "DB Curl", "DB Incline Bench", "DB Row"]
         );
+        assert_eq!(completions, completions_abbr);
     }
 }

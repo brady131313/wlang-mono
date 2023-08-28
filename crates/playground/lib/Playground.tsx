@@ -48,7 +48,8 @@ function Playground() {
 
       if (lookup && lookup.treeKind === 'exercise') {
         const exercise = lookup.token.kind === 'ident' ? input.substring(lookup.token.start, offset) : ""
-        console.log(COMPLETION.complete_exercise(exercise))
+        const completions: string[] = COMPLETION.complete_exercise(exercise)
+        newCompletions.push(...completions)
       }
     }
     setCompletions(newCompletions);

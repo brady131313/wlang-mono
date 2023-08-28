@@ -167,13 +167,15 @@ impl JSCompletionTrie {
         Self::default()
     }
 
-    pub fn add_exercise(&mut self, exercise: String) {
+    pub fn add_exercise(&mut self, exercise: &str) {
         self.0.insert_exercises([exercise])
     }
 
     #[wasm_bindgen]
-    pub fn complete_exercise(&self, exercise: &str) -> String {
-        let completions: Vec<_> = self.0.complete_exercise(exercise).map(|(e, _)| e).collect();
-        format!("{completions:?}")
+    pub fn complete_exercise(&self, exercise: &str) -> Vec<JsValue> {
+        self.0
+            .complete_exercise(exercise)
+            .map(|(e, _)| JsValue::from_str(&e))
+            .collect()
     }
 }
