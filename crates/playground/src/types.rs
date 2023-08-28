@@ -2,6 +2,7 @@ use wasm_bindgen::prelude::*;
 
 use wlang::{
     ast::{walker::TokenContext, NodeKind},
+    autocomplete::CompletionTrie,
     lexer::{Token, TokenKind},
     parser::ParseError,
 };
@@ -152,5 +153,17 @@ pub struct JSParseError(ParseError);
 impl From<ParseError> for JSParseError {
     fn from(value: ParseError) -> Self {
         Self(value)
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Default)]
+pub struct JSCompletionTrie(CompletionTrie);
+
+#[wasm_bindgen]
+impl JSCompletionTrie {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self::default()
     }
 }

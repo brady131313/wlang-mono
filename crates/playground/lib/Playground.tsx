@@ -1,6 +1,7 @@
 import { WorkoutCst, WorkoutHir } from "playground/playground";
 import React, { useState } from "react";
 import Editor from "./Editor";
+import { JSTokenContext } from "playground";
 
 const BORDER_CLASS = "border border-gray-400 rounded-xl flex-grow p-3";
 
@@ -9,7 +10,7 @@ const GridItem: React.FC<
 > = (
   { title, content, children },
 ) => (
-    <div className="flex flex-col gap-y-3">
+    <div className="flex flex-col gap-y-3 relative">
       <h1 className="text-2xl font-bold tracking-wide">{title}</h1>
       {!children
         ? (
@@ -23,6 +24,7 @@ const GridItem: React.FC<
 
 function Playground() {
   const [input, setInput] = useState("");
+  const [context, setContext] = useState<JSTokenContext | null>(null);
   const [completions, setCompletions] = useState<string[]>([]);
   const [cst, setCst] = useState<WorkoutCst | null>(null);
   const [hir, setHir] = useState<WorkoutHir | null>(null);
@@ -41,7 +43,7 @@ function Playground() {
 
     if (offset) {
       const lookup = newCst.lookupOffset(offset);
-      console.log({ kind: lookup?.treeKind, token: lookup?.token.kind });
+      setContext(lookup || null)
     }
 
     const newHir = new WorkoutHir(newCst);
@@ -57,9 +59,15 @@ function Playground() {
           showMenu={completions.length > 0}
         >
           <ul className="bg-gray-50 p-1.5 rounded divide-y divide-gray-200">
-            {completions.map((c) => <li>{c}</li>)}
+            {completions.map((c) => <li key={c}>{c}</li>)}
           </ul>
         </Editor>
+        {context && (
+          <div className="absolute bottom-2 right-4">
+            {context.treeKind && context.treeKind + ">"}
+            {context.token.kind}
+          </div>
+        )}
       </GridItem>
       <GridItem title="Formatted">
         <div
