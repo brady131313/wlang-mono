@@ -3,13 +3,20 @@
     import Card from './lib/Card.svelte'
     import Editor from './lib/Editor.svelte'
     import TokenPill from './lib/TokenPill.svelte'
-    import { type JSToken, lex, WorkoutCst, WorkoutHir } from 'wlang-web'
+    import {
+        type JSToken,
+        lex,
+        WorkoutCst,
+        WorkoutHir,
+        type JSTokenContext,
+    } from 'wlang-web'
 
     let input: string = ''
     let offset: number
 
     let tokens: JSToken[] = []
     let cst: WorkoutCst | null = null
+    let context: JSTokenContext | null = null
     let hir: WorkoutHir | null = null
 
     const getSuggestion = () => {
@@ -27,7 +34,10 @@
 
     $: tokens = lex(input)
     $: cst = new WorkoutCst(input)
-    $: if (cst) hir = new WorkoutHir(cst)
+    $: if (cst) {
+        context = cst.lookupOffset(offset) || null
+        hir = new WorkoutHir(cst)
+    }
 </script>
 
 <main class="py-4">
@@ -57,6 +67,15 @@
                         bind:cursorOffset={offset}
                         {getSuggestion}
                     />
+                    <div class="flex justify-end">
+                        {#if context}
+                            <p>
+                                {context?.tree_kind &&
+                                    context.tree_kind + ' > '}{context?.token
+                                    .kind}
+                            </p>
+                        {/if}
+                    </div>
                 </div>
             </Card>
 
