@@ -26,6 +26,7 @@
                 context.token.start,
                 context.token.end
             )
+            console.log({ lookup, context })
             const result = COMPLETION.completeExercise(lookup)
             const suggestion = result.pop()
             if (suggestion) {
@@ -42,11 +43,18 @@
         complex: '',
     }
 
-    $: tokens = lex(input)
-    $: cst = new WorkoutCst(input)
-    $: if (cst) {
-        context = cst.lookupOffset(offset) || null
-        hir = new WorkoutHir(cst)
+    $: {
+        tokens = lex(input)
+
+        cst?.free()
+        cst = new WorkoutCst(input)
+
+        if (cst) {
+            context = cst.lookupOffset(offset) || null
+
+            hir?.free()
+            hir = new WorkoutHir(cst)
+        }
     }
 </script>
 
