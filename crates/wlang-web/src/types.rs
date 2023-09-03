@@ -88,9 +88,9 @@ impl From<TokenKind> for JSTokenKind {
 #[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct JSToken {
-    kind: JSTokenKind,
-    start: u32,
-    end: u32,
+    pub kind: JSTokenKind,
+    pub start: u32,
+    pub end: u32,
 }
 
 impl From<Token> for JSToken {
@@ -106,8 +106,8 @@ impl From<Token> for JSToken {
 #[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct JSTokenContext {
-    tree_kind: Option<JSNodeKind>,
-    token: JSToken,
+    pub tree_kind: Option<JSNodeKind>,
+    pub token: JSToken,
 }
 
 impl From<TokenContext> for JSTokenContext {
@@ -139,11 +139,12 @@ impl JSCompletionTrie {
         Self::default()
     }
 
+    #[wasm_bindgen(js_name = addExercise)]
     pub fn add_exercise(&mut self, exercise: &str) {
         self.0.insert_exercises([exercise])
     }
 
-    #[wasm_bindgen]
+    #[wasm_bindgen(js_name = completeExercise)]
     pub fn complete_exercise(&self, exercise: &str) -> Vec<JsValue> {
         self.0
             .complete_exercise(exercise)

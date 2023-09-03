@@ -1,4 +1,6 @@
 <script lang="ts">
+    import { getCursorOffsetInContentEditable } from './utils'
+
     export let value: string // the raw string with no html formatting
     export let cursorOffset = 0
     export let getSuggestion: (() => string | null) | null = null
@@ -11,14 +13,6 @@
 
     let startX: number = 0
     let endX: number = 0
-
-    const updateCaretOffset = () => {
-        const selection = window.getSelection()
-        if (selection && selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0)
-            cursorOffset = range.startOffset
-        }
-    }
 
     const setCaretOffset = (offset: number) => {
         const range = document.createRange()
@@ -69,8 +63,7 @@
     }
 
     $: if (value) {
-        updateCaretOffset()
-
+        cursorOffset = getCursorOffsetInContentEditable(inputEl) || 0
         suggestion = getSuggestion?.() || null
 
         const preCursorText = value.substring(0, cursorOffset)

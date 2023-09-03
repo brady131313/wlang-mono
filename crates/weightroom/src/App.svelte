@@ -10,6 +10,7 @@
         WorkoutHir,
         type JSTokenContext,
     } from 'wlang-web'
+    import { COMPLETION } from './lib/utils'
 
     let input: string = ''
     let offset: number
@@ -20,8 +21,17 @@
     let hir: WorkoutHir | null = null
 
     const getSuggestion = () => {
-        const word = input.split(' ').pop()
-        if (word?.startsWith('a')) return 'apple'.substring(word.length)
+        if (context) {
+            const lookup = input.substring(
+                context.token.start,
+                context.token.end
+            )
+            const result = COMPLETION.completeExercise(lookup)
+            const suggestion = result.pop()
+            if (suggestion) {
+                return suggestion.substring(lookup.length)
+            }
+        }
         return null
     }
 
