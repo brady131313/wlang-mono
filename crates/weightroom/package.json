@@ -18,6 +18,7 @@
         "@tailwindcss/forms": "^0.5.6",
         "@tsconfig/svelte": "^5.0.0",
         "autoprefixer": "^10.4.15",
+        "daisyui": "^3.6.4",
         "postcss": "^8.4.29",
         "prettier": "^3.0.3",
         "prettier-plugin-svelte": "^3.0.3",
