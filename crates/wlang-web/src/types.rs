@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 use wasm_bindgen::prelude::*;
 
 use wlang::{
@@ -7,18 +9,19 @@ use wlang::{
     parser::ParseError,
 };
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "snake_case")]
 pub enum JSNodeKind {
-    Error = "error",
-    Workout = "workout",
-    Exercise = "exercise",
-    SetGroup = "set_group",
-    Set = "set",
-    Weight = "weight",
-    Reps = "reps",
-    SimpleDuration = "simple_duration",
-    LongDuration = "long_duration",
+    Error,
+    Workout,
+    Exercise,
+    SetGroup,
+    Set,
+    Weight,
+    Reps,
+    SimpleDuration,
+    LongDuration,
 }
 
 impl From<NodeKind> for JSNodeKind {
@@ -37,25 +40,26 @@ impl From<NodeKind> for JSNodeKind {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
+#[serde(rename_all = "snake_case")]
 pub enum JSTokenKind {
-    Bodyweight = "bodyweight",
-    X = "x",
-    Plus = "plus",
-    Integer = "integer",
-    Float = "float",
-    Hour = "hour",
-    Minute = "minute",
-    Second = "second",
-    Colon = "colon",
-    Hash = "hash",
-    Comma = "comma",
-    Newline = "newline",
-    Space = "space",
-    Ident = "ident",
-    Eof = "eof",
-    Error = "error",
+    Bodyweight,
+    X,
+    Plus,
+    Integer,
+    Float,
+    Hour,
+    Minute,
+    Second,
+    Colon,
+    Hash,
+    Comma,
+    Newline,
+    Space,
+    Ident,
+    Eof,
+    Error,
 }
 
 impl From<TokenKind> for JSTokenKind {
@@ -81,30 +85,12 @@ impl From<TokenKind> for JSTokenKind {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct JSToken {
     kind: JSTokenKind,
     start: u32,
     end: u32,
-}
-
-#[wasm_bindgen]
-impl JSToken {
-    #[wasm_bindgen(getter)]
-    pub fn kind(&self) -> JSTokenKind {
-        self.kind
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn start(&self) -> u32 {
-        self.start
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn end(&self) -> u32 {
-        self.end
-    }
 }
 
 impl From<Token> for JSToken {
@@ -117,24 +103,11 @@ impl From<Token> for JSToken {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Tsify, Serialize, Deserialize)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub struct JSTokenContext {
     tree_kind: Option<JSNodeKind>,
     token: JSToken,
-}
-
-#[wasm_bindgen]
-impl JSTokenContext {
-    #[wasm_bindgen(getter = treeKind)]
-    pub fn tree_kind(&self) -> Option<JSNodeKind> {
-        self.tree_kind
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn token(&self) -> JSToken {
-        self.token
-    }
 }
 
 impl From<TokenContext> for JSTokenContext {
@@ -146,8 +119,7 @@ impl From<TokenContext> for JSTokenContext {
     }
 }
 
-#[wasm_bindgen]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct JSParseError(ParseError);
 
 impl From<ParseError> for JSParseError {
