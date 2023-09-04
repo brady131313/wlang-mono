@@ -24,16 +24,16 @@ export const getCursorOffsetInContentEditable = (
     }
 
     // Add newline characters for nested divs
-    let walker = document.createTreeWalker(
-        element,
-        NodeFilter.SHOW_ELEMENT,
-        null
-    )
-    while ((currentNode = walker.nextNode())) {
-        if (currentNode.nodeName === 'DIV') {
-            charCount++
-        }
-    }
+    // let walker = document.createTreeWalker(
+    //     element,
+    //     NodeFilter.SHOW_ELEMENT,
+    //     null
+    // )
+    // while ((currentNode = walker.nextNode())) {
+    //     if (currentNode.nodeName === 'DIV') {
+    //         charCount++
+    //     }
+    // }
 
     return charCount
 }
