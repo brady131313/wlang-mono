@@ -8,17 +8,23 @@
         "build": "vite build",
         "preview": "vite preview",
         "format": "prettier --write \"src/**/*.{js,ts,svelte}\"",
-        "check": "svelte-check --tsconfig ./tsconfig.json"
+        "check": "svelte-check --tsconfig ./tsconfig.json",
+        "lint": "eslint --ext .js,.ts,.svelte src"
     },
     "dependencies": {
+        "svelte-lexical": "^0.3.4",
         "wlang-web": "link:../wlang-web/pkg"
     },
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^2.4.2",
         "@tailwindcss/forms": "^0.5.6",
         "@tsconfig/svelte": "^5.0.0",
+        "@typescript-eslint/eslint-plugin": "^6.5.0",
+        "@typescript-eslint/parser": "^6.5.0",
         "autoprefixer": "^10.4.15",
         "daisyui": "^3.6.4",
+        "eslint": "^8.48.0",
+        "eslint-plugin-svelte": "^2.33.0",
         "postcss": "^8.4.29",
         "prettier": "^3.0.3",
         "prettier-plugin-svelte": "^3.0.3",

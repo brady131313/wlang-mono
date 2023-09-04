@@ -1,7 +1,6 @@
 <script lang="ts">
     import Container from './lib/Container.svelte'
     import Card from './lib/Card.svelte'
-    import Editor from './lib/Editor.svelte'
     import TokenPill from './lib/TokenPill.svelte'
     import {
         type JSToken,
@@ -10,7 +9,8 @@
         WorkoutHir,
         type JSTokenContext,
     } from 'wlang-web'
-    import { COMPLETION } from './lib/utils'
+    import { WORKOUTS } from './lib/utils'
+    import Editor from './lib/Editor.svelte'
 
     let input: string = ''
     let offset: number
@@ -19,29 +19,6 @@
     let cst: WorkoutCst | null = null
     let context: JSTokenContext | null = null
     let hir: WorkoutHir | null = null
-
-    const getSuggestion = () => {
-        if (context) {
-            const lookup = input.substring(
-                context.token.start,
-                context.token.end
-            )
-            console.log({ lookup, context })
-            const result = COMPLETION.completeExercise(lookup)
-            const suggestion = result.pop()
-            if (suggestion) {
-                return suggestion.substring(lookup.length)
-            }
-        }
-        return null
-    }
-
-    const SAMPLES: Record<string, string> = {
-        simple: `# Bench Press
-225 x5 
-        `,
-        complex: '',
-    }
 
     $: {
         tokens = lex(input)
@@ -68,11 +45,11 @@
 
                 <div class="space-y-2">
                     <div class="flex gap-2">
-                        {#each Object.keys(SAMPLES) as sample}
+                        {#each Object.keys(WORKOUTS) as sample}
                             <button
-                                class="btn btn-xs btn-secondary"
+                                class="btn btn-secondary btn-xs"
                                 on:click={() => {
-                                    input = SAMPLES[sample].trim()
+                                    input = WORKOUTS[sample].trim()
                                     offset = input.length
                                 }}
                             >
@@ -80,11 +57,7 @@
                             </button>
                         {/each}
                     </div>
-                    <Editor
-                        bind:value={input}
-                        bind:cursorOffset={offset}
-                        {getSuggestion}
-                    />
+                    <Editor />
                     <div class="flex justify-end">
                         {#if context}
                             <p>
@@ -110,12 +83,15 @@
 
             <Card>
                 <h1 slot="header" class="text-lg font-medium text-gray-900">
-                    Trees
+                    CST
                 </h1>
-                <div class="flex justify-between gap-4">
-                    <pre class="flex-1 text-gray-700">{cst?.toString()}</pre>
-                    <pre class="flex-1 text-gray-700">{hir?.toString()}</pre>
-                </div>
+                <pre class="flex-1 text-gray-700">{cst?.toString()}</pre>
+            </Card>
+            <Card>
+                <h1 slot="header" class="text-lg font-medium text-gray-900">
+                    HIR
+                </h1>
+                <pre class="flex-1 text-gray-700">{hir?.toString()}</pre>
             </Card>
         </div>
     </Container>
