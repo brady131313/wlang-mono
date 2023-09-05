@@ -25,7 +25,7 @@ pub trait SyntaxNodeExt {
         if let Err(token) = self.walk(&mut walker, tree) {
             Some(TokenContext {
                 token,
-                tree_kind: walker.current_tree_kind,
+                node: walker.current_node,
             })
         } else {
             None
@@ -131,19 +131,19 @@ impl<W: Write> TreeWalker for CstPrinter<W> {
 /// Hold a token and the nearest tree kind its under
 pub struct TokenContext {
     pub token: SyntaxToken,
-    pub tree_kind: Option<SyntaxNode>,
+    pub node: Option<SyntaxNode>,
 }
 
 pub struct LookupSpan {
     target: TextRange,
-    current_tree_kind: Option<SyntaxNode>,
+    current_node: Option<SyntaxNode>,
 }
 
 impl LookupSpan {
     pub fn new(target: TextRange) -> Self {
         Self {
             target,
-            current_tree_kind: None,
+            current_node: None,
         }
     }
 }
@@ -161,12 +161,12 @@ impl TreeWalker for LookupSpan {
     }
 
     fn start_tree(&mut self, node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
-        self.current_tree_kind = Some(*node);
+        self.current_node = Some(*node);
         Ok(())
     }
 
     fn end_tree(&mut self, _node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
-        self.current_tree_kind = None;
+        self.current_node = None;
         Ok(())
     }
 }
