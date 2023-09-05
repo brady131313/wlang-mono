@@ -1,4 +1,15 @@
 <script lang="ts">
+    import { Composer, ContentEditable, PlainTextPlugin } from 'svelte-lexical'
+
+    const config = {
+        nodes: [],
+        onError: error => {
+            throw error
+        },
+    }
 </script>
 
-Editors
+<Composer initialConfig={config}>
+    <ContentEditable />
+    <PlainTextPlugin />
+</Composer>

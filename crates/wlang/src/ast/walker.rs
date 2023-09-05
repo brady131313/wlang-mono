@@ -1,10 +1,10 @@
-use std::fmt::{Display, Write};
+use std::fmt::Write;
 
 use eventree::{TextRange, TextSize};
 
-use crate::lexer::{Token, TokenKind};
+use crate::lexer::TokenKind;
 
-use super::{NodeKind, SyntaxNode, SyntaxToken, SyntaxTree};
+use super::{SyntaxNode, SyntaxToken, SyntaxTree};
 
 pub trait TreeWalker {
     type Err;
@@ -23,12 +23,12 @@ pub trait SyntaxNodeExt {
         let mut walker = LookupSpan::new(span);
 
         if let Err(token) = self.walk(&mut walker, tree) {
-            return Some(TokenContext {
+            Some(TokenContext {
                 token,
                 tree_kind: walker.current_tree_kind,
-            });
+            })
         } else {
-            return None;
+            None
         }
     }
 
@@ -44,7 +44,7 @@ pub trait SyntaxNodeExt {
 
 impl SyntaxNodeExt for SyntaxNode {
     fn walk<W: TreeWalker>(&self, walker: &mut W, tree: &SyntaxTree) -> Result<(), W::Err> {
-        walker.start_tree(&self, tree)?;
+        walker.start_tree(self, tree)?;
 
         for child in self.children(tree) {
             match child {
@@ -53,7 +53,7 @@ impl SyntaxNodeExt for SyntaxNode {
             }
         }
 
-        walker.end_tree(&self, tree)?;
+        walker.end_tree(self, tree)?;
 
         Ok(())
     }
@@ -76,11 +76,11 @@ impl TreeWalker for PlainPrinter {
         write!(self.0, "{text}")
     }
 
-    fn start_tree(&mut self, node: &SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+    fn start_tree(&mut self, _node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
         Ok(())
     }
 
-    fn end_tree(&mut self, node: &SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+    fn end_tree(&mut self, _node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
         Ok(())
     }
 }
@@ -109,9 +109,9 @@ impl<W: Write> TreeWalker for CstPrinter<W> {
         let indent = self.indent();
 
         match token.kind(tree) {
-            TokenKind::Space => write!(self.out, "{indent}  Space({})\n", text.len()),
-            TokenKind::Newline => write!(self.out, "{indent}  Nl({})\n", text.len()),
-            _ => write!(self.out, "{indent}  '{text}'\n"),
+            TokenKind::Space => writeln!(self.out, "{indent}  Space({})", text.len()),
+            TokenKind::Newline => writeln!(self.out, "{indent}  Nl({})", text.len()),
+            _ => writeln!(self.out, "{indent}  '{text}'"),
         }
     }
 
@@ -119,10 +119,10 @@ impl<W: Write> TreeWalker for CstPrinter<W> {
         self.level += 1;
 
         let indent = self.indent();
-        write!(self.out, "{indent}{:?}\n", node.kind(tree))
+        writeln!(self.out, "{indent}{:?}", node.kind(tree))
     }
 
-    fn end_tree(&mut self, node: &SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+    fn end_tree(&mut self, _node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
         self.level -= 1;
         Ok(())
     }
@@ -130,23 +130,13 @@ impl<W: Write> TreeWalker for CstPrinter<W> {
 
 /// Hold a token and the nearest tree kind its under
 pub struct TokenContext {
-    pub token: Token,
-    pub tree_kind: Option<NodeKind>,
-}
-
-impl Display for TokenContext {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(kind) = self.tree_kind {
-            write!(f, "{kind:?}({})", self.token)
-        } else {
-            write!(f, "{}", self.token)
-        }
-    }
+    pub token: SyntaxToken,
+    pub tree_kind: Option<SyntaxNode>,
 }
 
 pub struct LookupSpan {
     target: TextRange,
-    current_tree_kind: Option<NodeKind>,
+    current_tree_kind: Option<SyntaxNode>,
 }
 
 impl LookupSpan {
@@ -159,26 +149,23 @@ impl LookupSpan {
 }
 
 impl TreeWalker for LookupSpan {
-    type Err = Token;
+    type Err = SyntaxToken;
 
     fn token(&mut self, token: &SyntaxToken, tree: &SyntaxTree) -> Result<(), Self::Err> {
         let range = token.range(tree);
         if range.contains_range(self.target) {
-            return Err(Token {
-                kind: token.kind(tree),
-                range,
-            });
+            return Err(*token);
         }
 
-        return Ok(());
-    }
-
-    fn start_tree(&mut self, node: &SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
-        self.current_tree_kind = Some(node.kind(tree));
         Ok(())
     }
 
-    fn end_tree(&mut self, node: &SyntaxNode, tree: &SyntaxTree) -> Result<(), Self::Err> {
+    fn start_tree(&mut self, node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
+        self.current_tree_kind = Some(*node);
+        Ok(())
+    }
+
+    fn end_tree(&mut self, _node: &SyntaxNode, _tree: &SyntaxTree) -> Result<(), Self::Err> {
         self.current_tree_kind = None;
         Ok(())
     }

@@ -110,15 +110,6 @@ pub struct JSTokenContext {
     pub token: JSToken,
 }
 
-impl From<TokenContext> for JSTokenContext {
-    fn from(value: TokenContext) -> Self {
-        Self {
-            tree_kind: value.tree_kind.map(JSNodeKind::from),
-            token: JSToken::from(value.token),
-        }
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JSParseError(ParseError);
 

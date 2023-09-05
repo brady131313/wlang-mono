@@ -212,7 +212,7 @@ impl Parser {
 
         let m = self.open();
         self.errors
-            .push(ParseError::custom(self.pos, format!("{error}")));
+            .push(ParseError::custom(self.pos, error.to_string()));
         self.advance();
 
         self.close(m, NodeKind::Error);
@@ -228,11 +228,10 @@ impl Parser {
 
     fn build_tree(self, input: &str) -> (SyntaxTree, Vec<ParseError>) {
         let mut tokens = self.tokens.into_iter();
-        let mut events = self.events;
         let errors = self.errors;
 
         let mut builder = SyntaxBuilder::new(input);
-        for event in events {
+        for event in self.events {
             match event {
                 // Starting new node; just push empty tree to stack
                 Event::Open { kind } => {

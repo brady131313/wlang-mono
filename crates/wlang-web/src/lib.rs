@@ -137,10 +137,11 @@ impl WorkoutCst {
 
     #[wasm_bindgen(js_name = lookupOffset)]
     pub fn lookup_offset(&self, offset: u32) -> Option<JSTokenContext> {
-        self.tree
-            .root()
-            .lookup_offset(offset, &self.tree)
-            .map(JSTokenContext::from)
+        // self.tree
+        //     .root()
+        //     .lookup_offset(offset, &self.tree)
+        //     .map(JSTokenContext::from)
+        todo!()
     }
 }
 
